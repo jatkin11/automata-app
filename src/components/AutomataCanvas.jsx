@@ -23,6 +23,26 @@ function AutomataCanvas() {
           </div>
         </Panel>
 
+        <Panel position="center-left">
+          <div className="tools-panel">
+            <button>Add Node</button>
+            <button>Add Edge</button>
+            <button>Add Accepting State</button>
+            <button>Add Starting State</button>
+            <button>Delete Tool</button>
+          </div>
+        </Panel>
+
+        <Panel position="center-right">
+          <div className="info-panel">
+            <input
+              type="text"
+              placeholder="Enter regex, e.g. (a|b)*abb"
+            />
+            <button>Convert to NFA</button>
+          </div>
+        </Panel>
+
         <Background
           variant={BackgroundVariant.Lines}
           gap={24}
