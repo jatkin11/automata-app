@@ -7,13 +7,7 @@ import {
 
 import "@xyflow/react/dist/style.css";
 
-const initialNodes = [
-  {
-    id: "q0",
-    position: { x: 100, y: 100 },
-    data: { label: "q0" },
-  },
-];
+const initialNodes = [];
 
 const initialEdges = [];
 
