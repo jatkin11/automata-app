@@ -3,7 +3,7 @@ import AutomataCanvas from "./components/AutomataCanvas";
 function App() {
   return (
     <main>
-      <h1>Automata Tool</h1>
+      <h1>AutomataApp</h1>
       <AutomataCanvas />
     </main>
   );
