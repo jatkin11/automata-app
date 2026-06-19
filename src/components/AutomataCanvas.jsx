@@ -23,15 +23,6 @@ function AutomataCanvas() {
           </div>
         </Panel>
 
-        <Panel position="center-left">
-          <div className="tools-panel">
-            <button>Add Node</button>
-            <button>Add Edge</button>
-            <button>Add Accepting State</button>
-            <button>Add Starting State</button>
-            <button>Delete Tool</button>
-          </div>
-        </Panel>
 
         <Panel position="center-right">
           <div className="info-panel">
@@ -46,8 +37,11 @@ function AutomataCanvas() {
 
         <Panel position="center-left">
         <div className="tools-panel">
-            <button>Add State</button>
+          <button>Add Node</button>
             <button>Add Edge</button>
+            <button>Add Accepting State</button>
+            <button>Add Starting State</button>
+            <button>Delete Tool</button>
         </div>
         </Panel>
 
