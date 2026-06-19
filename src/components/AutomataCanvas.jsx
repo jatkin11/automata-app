@@ -3,6 +3,7 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  Panel
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
@@ -13,8 +14,15 @@ const initialEdges = [];
 
 function AutomataCanvas() {
   return (
-    <div style={{ width: "100vw", height: "90vh" }}>
+    <div style={{ width: "100vw", height: "100vh" }}>
       <ReactFlow nodes={initialNodes} edges={initialEdges} fitView>
+
+        <Panel position="top-left">
+          <div className="app-heading">
+            AutomataApp
+          </div>
+        </Panel>
+
         <Background
           variant={BackgroundVariant.Lines}
           gap={24}
