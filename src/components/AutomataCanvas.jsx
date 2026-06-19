@@ -13,7 +13,7 @@ const initialEdges = [];
 
 function AutomataCanvas() {
   return (
-    <div style={{ width: "100vh", height: "100vh" }}>
+    <div style={{ width: "100vw", height: "90vh" }}>
       <ReactFlow nodes={initialNodes} edges={initialEdges} fitView>
         <Background
           variant={BackgroundVariant.Lines}
