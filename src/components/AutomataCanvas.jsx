@@ -33,29 +33,31 @@ function FlowCanvas() {
   const { screenToFlowPosition } = useReactFlow();
 
 async function handleConvertToDFA() {
-  const automataJson = {
+  const graph = {
     automataType: automataType,
     nodes: nodes,
     edges: edges,
   };
 
-    
-  console.log("Outgoing JSON object:", automataJson);
-  console.log("Outgoing JSON string:", JSON.stringify(automataJson, null, 2));
+  const response = await fetch(
+    "https://automata-backend.onrender.com/api/automata/convert-to-dfa",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(graph),
+    }
+  );
 
-  const response = await fetch("https://automata-backend.onrender.com/api/automata/convert-to-dfa", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(automataJson),
-  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Backend error:", response.status, errorText);
+    return;
+  }
 
-  const convertedGraph = await response.json();
-
-  setNodes(convertedGraph.nodes);
-  setEdges(convertedGraph.edges);
-  setAutomataType("DFA");
+  const result = await response.json();
+  console.log("Converted DFA:", result);
 }
 
 
