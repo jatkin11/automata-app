@@ -32,6 +32,35 @@ function FlowCanvas() {
 
   const { screenToFlowPosition } = useReactFlow();
 
+async function handleConvertToDFA() {
+  const automataJson = {
+    automataType: automataType,
+    nodes: nodes,
+    edges: edges,
+  };
+
+    
+  console.log("Outgoing JSON object:", automataJson);
+  console.log("Outgoing JSON string:", JSON.stringify(automataJson, null, 2));
+
+  const response = await fetch("http://localhost:8080/api/automata/convert-to-dfa", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(automataJson),
+  });
+
+  const convertedGraph = await response.json();
+
+  setNodes(convertedGraph.nodes);
+  setEdges(convertedGraph.edges);
+  setAutomataType("DFA");
+}
+
+
+
+
   const handlePaneClick = useCallback(
     (event) => {
       if (selectedTool !== "add-node") {
@@ -110,9 +139,6 @@ function FlowCanvas() {
     setConvertedRegex("(placeholder-regex)");
   }
 
-  function handleConvertToDFA() {
-    console.log("Convert to DFA placeholder");
-  }
 
   return (
     <div className="canvas-container">
