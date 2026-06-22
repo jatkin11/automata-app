@@ -224,7 +224,7 @@ function FlowCanvas() {
                 type="text"
                 placeholder="e.g. (a|b)*abb"
               />
-              <button>Convert</button>
+              <button>Convert to NFA</button>
             </div>
           </div>
         </Panel>
