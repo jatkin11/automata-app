@@ -151,7 +151,7 @@ function FlowCanvas() {
           </div>
         </Panel>
 
-        <Panel position="bottom-left">
+        <Panel position="center-right">
         <div className="conversion-panel">
             <button>Convert to DFA</button>
             <button>Convert to Regex</button>
