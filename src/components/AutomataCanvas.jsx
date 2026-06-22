@@ -25,6 +25,9 @@ function FlowCanvas() {
   const [selectedTool, setSelectedTool] = useState("select");
   const [selectedItem, setSelectedItem] = useState(null);
 
+  const [automataType, setAutomataType] = useState("NFA");
+  const [convertedRegex, setConvertedRegex] = useState("");
+
   const nextNodeNumber = useRef(0);
 
   const { screenToFlowPosition } = useReactFlow();
@@ -46,8 +49,8 @@ function FlowCanvas() {
       const newNode = {
         id: nodeId,
         position: {
-          x: position.x - 75,
-          y: position.y - 20,
+          x: position.x - 30,
+          y: position.y - 30,
         },
         data: {
           label: nodeId,
@@ -73,7 +76,7 @@ function FlowCanvas() {
         ...connection,
         id: `${connection.source}-${connection.target}-${Date.now()}`,
         label: edgeLabel || "",
-        type: "bezier",
+        type: "smoothstep",
       };
 
       setEdges((currentEdges) =>
@@ -103,8 +106,16 @@ function FlowCanvas() {
     setSelectedItem(null);
   }, []);
 
+  function handleConvertToRegex() {
+    setConvertedRegex("(placeholder-regex)");
+  }
+
+  function handleConvertToDFA() {
+    console.log("Convert to DFA placeholder");
+  }
+
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
+    <div className="canvas-container">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -123,101 +134,134 @@ function FlowCanvas() {
         </Panel>
 
         <Panel position="center-left">
-          <div className="tools-panel">
-            <button
-              onClick={() => setSelectedTool("select")}
-              className={selectedTool === "select" ? "tool-active" : ""}
-            >
-              Select / Move
-            </button>
+          <div className="left-tool-stack">
+            <div className="tools-panel">
+              <div className="automata-toggle">
+                <button
+                  onClick={() => setAutomataType("NFA")}
+                  className={automataType === "NFA" ? "toggle-active" : ""}
+                >
+                  NFA
+                </button>
 
-            <button
-              onClick={() => setSelectedTool("add-node")}
-              className={selectedTool === "add-node" ? "tool-active" : ""}
-            >
-              Add Node
-            </button>
+                <button
+                  onClick={() => setAutomataType("DFA")}
+                  className={automataType === "DFA" ? "toggle-active" : ""}
+                >
+                  DFA
+                </button>
+              </div>
 
-            <button
-              onClick={() => setSelectedTool("add-edge")}
-              className={selectedTool === "add-edge" ? "tool-active" : ""}
-            >
-              Add Edge
-            </button>
+              <button
+                onClick={() => setSelectedTool("select")}
+                className={selectedTool === "select" ? "tool-active" : ""}
+              >
+                Select / Move
+              </button>
 
-            <button>Add Accepting State</button>
-            <button>Add Starting State</button>
-            <button>Delete Tool</button>
+              <button
+                onClick={() => setSelectedTool("add-node")}
+                className={selectedTool === "add-node" ? "tool-active" : ""}
+              >
+                Add Node
+              </button>
+
+              <button
+                onClick={() => setSelectedTool("add-edge")}
+                className={selectedTool === "add-edge" ? "tool-active" : ""}
+              >
+                Add Edge
+              </button>
+
+              <button>Add Accepting State</button>
+              <button>Add Starting State</button>
+              <button>Delete Tool</button>
+            </div>
+
+            <div className="conversion-panel">
+              <div className="conversion-title">
+                {automataType} Conversion
+              </div>
+
+              {automataType === "NFA" && (
+                <button onClick={handleConvertToDFA}>
+                  Convert to DFA
+                </button>
+              )}
+
+              <button onClick={handleConvertToRegex}>
+                Convert to Regex
+              </button>
+
+              {convertedRegex && (
+                <div className="converted-regex-output">
+                  <strong>Regex:</strong> {convertedRegex}
+                </div>
+              )}
+            </div>
+
+            <div className="regex-panel">
+              <label className="regex-label">
+                Regex Conversion
+              </label>
+
+              <div className="regex-input-row">
+                <input
+                  type="text"
+                  placeholder="e.g. (a|b)*abb"
+                />
+                <button>Convert to NFA</button>
+              </div>
+            </div>
           </div>
         </Panel>
 
-        <Panel position="center-right">
-        <div className="conversion-panel">
-            <button>Convert to DFA</button>
-            <button>Convert to Regex</button>
-        </div>
-        </Panel>
-
-       {selectedItem && (
-        <Panel position="bottom-right">
+        {selectedItem && (
+          <Panel position="bottom-right">
             <div className="inspector-panel">
-            <h3>Selected {selectedItem.type}</h3>
+              <h3>
+                Selected {selectedItem.type}
+              </h3>
 
-            {selectedItem.type === "node" && (
+              {selectedItem.type === "node" && (
                 <>
-                <p>
+                  <p>
                     <strong>ID:</strong> {selectedItem.item.id}
-                </p>
-                <p>
+                  </p>
+                  <p>
                     <strong>Label:</strong> {selectedItem.item.data?.label}
-                </p>
-                <p>
+                  </p>
+                  <p>
                     <strong>X:</strong>{" "}
                     {Math.round(selectedItem.item.position.x)}
-                </p>
-                <p>
+                  </p>
+                  <p>
                     <strong>Y:</strong>{" "}
                     {Math.round(selectedItem.item.position.y)}
-                </p>
+                  </p>
                 </>
-            )}
+              )}
 
-            {selectedItem.type === "edge" && (
+              {selectedItem.type === "edge" && (
                 <>
-                <p>
+                  <p>
                     <strong>ID:</strong> {selectedItem.item.id}
-                </p>
-                <p>
+                  </p>
+                  <p>
                     <strong>From:</strong> {selectedItem.item.source}
-                </p>
-                <p>
+                  </p>
+                  <p>
                     <strong>To:</strong> {selectedItem.item.target}
-                </p>
-                <p>
+                  </p>
+                  <p>
                     <strong>Label:</strong>{" "}
                     {selectedItem.item.label || "none"}
-                </p>
+                  </p>
                 </>
-            )}
+              )}
             </div>
-        </Panel>
+          </Panel>
         )}
-
-        <Panel position="bottom-center">
-          <div className="regex-panel">
-            <label className="regex-label">
-              Regex Conversion
-            </label>
-
-            <div className="regex-input-row">
-              <input
-                type="text"
-                placeholder="e.g. (a|b)*abb"
-              />
-              <button>Convert to NFA</button>
-            </div>
-          </div>
-        </Panel>
 
         <Background
           variant={BackgroundVariant.Lines}

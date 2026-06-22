@@ -1,25 +1,18 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #ffffff;
-
+  --bg: #16171d;
   --panel-bg: #ffffff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-
-  --accent: #aa3bff;
-  --accent-bg: rgba(206, 204, 207, 0.915);
-  --accent-border: rgba(170, 59, 255, 0.5);
-
-  --social-bg: rgba(244, 243, 236, 0.5);
+  --text: #9ca3af;
+  --text-h: #08060d;
+  --border: #9b9c9f;
+  --accent: #c084fc;
+  --accent-bg: rgba(192, 132, 252, 0.15);
+  --accent-border: rgba(192, 132, 252, 0.5);
 
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
-    rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(0, 0, 0, 0.4) 0 10px 15px -3px,
+    rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
 
   --sans: system-ui, "Segoe UI", Roboto, sans-serif;
-  --heading: system-ui, "Segoe UI", Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
@@ -30,34 +23,6 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #662d89;
-    --bg: #16171d;
-
-    --panel-bg: #ffffff;
-    --border: #9b9c9f;
-    --code-bg: #1f2028;
-
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-
-    --social-bg: rgba(47, 48, 58, 0.5);
-
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px,
-      rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-}
-
-@media (max-width: 1024px) {
-  :root {
-    font-size: 16px;
-  }
 }
 
 html,
@@ -76,43 +41,8 @@ body {
   box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-}
-
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-}
-
 p {
   margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }
 
 /* React Flow canvas */
@@ -122,7 +52,8 @@ code {
   height: 100vh;
 }
 
-/* Default React Flow nodes made circular */
+/* Default React Flow nodes */
+
 .react-flow__node-default {
   width: 60px;
   height: 60px;
@@ -157,124 +88,49 @@ code {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.25);
 }
 
-/* Tools panel */
+/* Left stacked panel */
 
-.tools-panel {
+.left-tool-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Shared panel styling */
+
+.tools-panel,
+.conversion-panel,
+.regex-panel,
+.inspector-panel {
   background: var(--panel-bg);
-  padding: 12px;
   border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.tools-panel,
+.conversion-panel,
+.regex-panel {
+  padding: 12px;
 
   display: flex;
   flex-direction: column;
   gap: 8px;
-
-  box-shadow: var(--shadow);
 }
-
-.tools-panel button {
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-
-  background: linear-gradient(to bottom, #ffffff, #eeeeee);
-  color: var(--accent);
-
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-
-  cursor: pointer;
-
-  box-shadow:
-    0 4px 0 #c9c9c9,
-    0 6px 10px rgba(0, 0, 0, 0.18);
-}
-
-.tools-panel button:hover {
-  background: linear-gradient(to bottom, #ffffff, #e7e7e7);
-  border-color: var(--accent-border);
-}
-
-.tools-panel button:active {
-  transform: translateY(3px);
-
-  box-shadow:
-    0 1px 0 #c9c9c9,
-    0 3px 6px rgba(0, 0, 0, 0.18);
-}
-
-.tools-panel button.tool-active {
-  background: var(--accent-bg);
-  border-color: var(--accent-border);
-  color: var(--accent);
-}
-
-/* Inspector panel */
 
 .inspector-panel {
-  background: var(--panel-bg);
-  color: #08060d;
-
+  color: var(--text-h);
   padding: 14px;
-  border-radius: 12px;
   min-width: 220px;
 
   display: flex;
   flex-direction: column;
   gap: 6px;
-
-  box-shadow: var(--shadow);
 }
 
-.inspector-panel h3 {
-  margin: 0 0 8px;
-  color: var(--accent);
-  font-size: 16px;
-}
+/* Shared button styling */
 
-.inspector-panel p {
-  margin: 0;
-  font-size: 14px;
-}
-
-/* Regex panel */
-
-.regex-panel {
-  background: var(--panel-bg);
-  padding: 14px;
-  border-radius: 12px;
-
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  box-shadow: var(--shadow);
-}
-
-.regex-label {
-  color: var(--accent);
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.regex-input-row {
-  display: flex;
-  gap: 8px;
-}
-
-.regex-input-row input {
-  width: 300px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-
-  color: #08060d;
-  background: white;
-
-  font: inherit;
-  font-size: 14px;
-}
-
+.tools-panel button,
+.conversion-panel button,
 .regex-input-row button {
   padding: 8px 12px;
   border: 1px solid var(--border);
@@ -294,11 +150,15 @@ code {
     0 6px 10px rgba(0, 0, 0, 0.18);
 }
 
+.tools-panel button:hover,
+.conversion-panel button:hover,
 .regex-input-row button:hover {
   background: linear-gradient(to bottom, #ffffff, #e7e7e7);
   border-color: var(--accent-border);
 }
 
+.tools-panel button:active,
+.conversion-panel button:active,
 .regex-input-row button:active {
   transform: translateY(3px);
 
@@ -307,64 +167,96 @@ code {
     0 3px 6px rgba(0, 0, 0, 0.18);
 }
 
-.conversion-panel {
-  background: var(--panel-bg);
-  padding: 12px;
-  border-radius: 12px;
+/* Active buttons */
 
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  box-shadow: var(--shadow);
-}
-
-.conversion-panel button {
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-
-  background: linear-gradient(to bottom, #ffffff, #eeeeee);
+.tools-panel button.tool-active,
+.automata-toggle button.toggle-active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
   color: var(--accent);
 
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-
-  cursor: pointer;
-
-  box-shadow:
-    0 4px 0 #c9c9c9,
-    0 6px 10px rgba(0, 0, 0, 0.18);
-}
-
-.conversion-panel button:hover {
-  background: linear-gradient(to bottom, #ffffff, #e7e7e7);
-  border-color: var(--accent-border);
-}
-
-.conversion-panel button:active {
-  transform: translateY(3px);
+  transform: translateY(2px);
 
   box-shadow:
     0 1px 0 #c9c9c9,
-    0 3px 6px rgba(0, 0, 0, 0.18);
+    0 3px 6px rgba(0, 0, 0, 0.16);
 }
 
-/* Smaller screens */
+/* NFA / DFA toggle */
+
+.automata-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.automata-toggle button {
+  flex: 1;
+}
+
+/* Conversion panel */
+
+.conversion-title,
+.regex-label {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.converted-regex-output {
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  background: #f8f8f8;
+  color: var(--text-h);
+
+  font-size: 13px;
+  word-break: break-word;
+}
+
+/* Regex panel */
+
+.regex-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.regex-input-row input {
+  width: 190px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  color: var(--text-h);
+  background: white;
+
+  font: inherit;
+  font-size: 14px;
+}
+
+/* Inspector panel */
+
+.inspector-panel h3 {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.inspector-panel p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Responsive */
 
 @media (max-width: 1024px) {
-  h1 {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-
-  h2 {
-    font-size: 20px;
+  :root {
+    font-size: 16px;
   }
 }
-
-/* Phone layout */
 
 @media (max-width: 600px) {
   .app-heading {
@@ -372,35 +264,26 @@ code {
     padding: 8px 12px;
   }
 
-  .tools-panel {
-    padding: 8px;
-    gap: 6px;
+  .left-tool-stack {
+    gap: 8px;
   }
 
-  .tools-panel button {
+  .tools-panel,
+  .conversion-panel,
+  .regex-panel {
+    padding: 8px;
+  }
+
+  .tools-panel button,
+  .conversion-panel button,
+  .regex-input-row button {
     font-size: 12px;
     padding: 6px 8px;
   }
 
-  .regex-panel {
-    width: 90vw;
-    padding: 10px;
-  }
-
-  .regex-label {
-    font-size: 13px;
-  }
-
-  .regex-input-row {
-    flex-direction: column;
-  }
-
   .regex-input-row input {
-    width: 100%;
-  }
-
-  .regex-input-row button {
-    width: 100%;
+    width: 160px;
+    font-size: 12px;
   }
 
   .inspector-panel {
