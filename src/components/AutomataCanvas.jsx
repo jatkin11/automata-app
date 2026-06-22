@@ -23,18 +23,6 @@ function AutomataCanvas() {
           </div>
         </Panel>
 
-
-        <Panel position="center-right">
-          <div className="info-panel">
-            <input
-              type="text"
-              placeholder="Enter regex, e.g. (a|b)*abb"
-            />
-            <button>Convert to NFA</button>
-          </div>
-        </Panel>
-
-
         <Panel position="center-left">
         <div className="tools-panel">
           <button>Add Node</button>
