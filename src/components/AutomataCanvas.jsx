@@ -14,15 +14,11 @@ import {
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
-import "./AutomataCanvas.css";
-import AutomataStateNode from "./AutomataStateNode";
+
 
 const initialNodes = [];
 const initialEdges = [];
 
-const nodeTypes = {
-  automataState: AutomataStateNode,
-};
 
 function FlowCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -51,7 +47,6 @@ function FlowCanvas() {
 
       const newNode = {
         id: nodeId,
-        type: "automataState",
         position: {
           x: position.x - 30,
           y: position.y - 30,
