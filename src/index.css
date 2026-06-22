@@ -203,5 +203,9 @@ code {
 }
 
 
-
+.tools-panel button.tool-active { /*TOOL SELECTED*/
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
 
