@@ -307,6 +307,50 @@ code {
     0 3px 6px rgba(0, 0, 0, 0.18);
 }
 
+.conversion-panel {
+  background: var(--panel-bg);
+  padding: 12px;
+  border-radius: 12px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  box-shadow: var(--shadow);
+}
+
+.conversion-panel button {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  background: linear-gradient(to bottom, #ffffff, #eeeeee);
+  color: var(--accent);
+
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 4px 0 #c9c9c9,
+    0 6px 10px rgba(0, 0, 0, 0.18);
+}
+
+.conversion-panel button:hover {
+  background: linear-gradient(to bottom, #ffffff, #e7e7e7);
+  border-color: var(--accent-border);
+}
+
+.conversion-panel button:active {
+  transform: translateY(3px);
+
+  box-shadow:
+    0 1px 0 #c9c9c9,
+    0 3px 6px rgba(0, 0, 0, 0.18);
+}
+
 /* Smaller screens */
 
 @media (max-width: 1024px) {

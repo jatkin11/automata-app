@@ -122,7 +122,7 @@ function FlowCanvas() {
           </div>
         </Panel>
 
-        <Panel position="top-right">
+        <Panel position="center-left">
           <div className="tools-panel">
             <button
               onClick={() => setSelectedTool("select")}
@@ -151,49 +151,56 @@ function FlowCanvas() {
           </div>
         </Panel>
 
-        {selectedItem && (
-          <Panel position="bottom-left">
-            <div className="inspector-panel">
-              <h3>Selected {selectedItem.type}</h3>
+        <Panel position="bottom-left">
+        <div className="conversion-panel">
+            <button>Convert to DFA</button>
+            <button>Convert to Regex</button>
+        </div>
+        </Panel>
 
-              {selectedItem.type === "node" && (
+       {selectedItem && (
+        <Panel position="bottom-right">
+            <div className="inspector-panel">
+            <h3>Selected {selectedItem.type}</h3>
+
+            {selectedItem.type === "node" && (
                 <>
-                  <p>
+                <p>
                     <strong>ID:</strong> {selectedItem.item.id}
-                  </p>
-                  <p>
+                </p>
+                <p>
                     <strong>Label:</strong> {selectedItem.item.data?.label}
-                  </p>
-                  <p>
+                </p>
+                <p>
                     <strong>X:</strong>{" "}
                     {Math.round(selectedItem.item.position.x)}
-                  </p>
-                  <p>
+                </p>
+                <p>
                     <strong>Y:</strong>{" "}
                     {Math.round(selectedItem.item.position.y)}
-                  </p>
+                </p>
                 </>
-              )}
+            )}
 
-              {selectedItem.type === "edge" && (
+            {selectedItem.type === "edge" && (
                 <>
-                  <p>
+                <p>
                     <strong>ID:</strong> {selectedItem.item.id}
-                  </p>
-                  <p>
+                </p>
+                <p>
                     <strong>From:</strong> {selectedItem.item.source}
-                  </p>
-                  <p>
+                </p>
+                <p>
                     <strong>To:</strong> {selectedItem.item.target}
-                  </p>
-                  <p>
+                </p>
+                <p>
                     <strong>Label:</strong>{" "}
                     {selectedItem.item.label || "none"}
-                  </p>
+                </p>
                 </>
-              )}
+            )}
             </div>
-          </Panel>
+        </Panel>
         )}
 
         <Panel position="bottom-center">
