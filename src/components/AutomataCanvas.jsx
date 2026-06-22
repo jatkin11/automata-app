@@ -18,6 +18,8 @@ const initialNodes = [];
 const initialEdges = [];
 
 function FlowCanvas() {
+  
+    
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
@@ -95,10 +97,42 @@ function FlowCanvas() {
               Add Node
             </button>
 
-            <button onClick={addEdge}>Add Edge</button>
-            <button onClick={addAcceptingState}>Add Accepting State</button>
-            <button onClick={addStartingState}>Add Starting State</button>
-            <button onClick={deleteTool}>Delete Tool</button>
+             <button
+              onClick={() => setSelectedTool("add-edge")}
+              className={selectedTool === "add-edge" ? "tool-active" : ""}
+            >
+              Add Edge
+            </button>
+
+             <button
+              onClick={() => setSelectedTool("add-accepting")}
+              className={selectedTool === "add-accepting" ? "tool-active" : ""}
+            >
+              Add Accepting State
+            </button>
+
+
+
+             <button
+              onClick={() => setSelectedTool("add-starting")}
+              className={selectedTool === "add-starting" ? "tool-active" : ""}
+            >
+              Add Starting State
+            </button>
+
+                         <button
+              onClick={() => setSelectedTool("add-selection")}
+              className={selectedTool === "add-selection" ? "tool-active" : ""}
+            >
+              Selection Tool
+            </button>
+
+             <button
+              onClick={() => setSelectedTool("add-delete")}
+              className={selectedTool === "add-delete" ? "tool-active" : ""}
+            >
+              Delete Tool
+            </button>
           </div>
         </Panel>
 
