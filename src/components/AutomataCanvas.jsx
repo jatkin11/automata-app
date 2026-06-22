@@ -15,10 +15,8 @@ import {
 
 import "@xyflow/react/dist/style.css";
 
-
 const initialNodes = [];
 const initialEdges = [];
-
 
 function FlowCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -48,8 +46,8 @@ function FlowCanvas() {
       const newNode = {
         id: nodeId,
         position: {
-          x: position.x - 30,
-          y: position.y - 30,
+          x: position.x - 75,
+          y: position.y - 20,
         },
         data: {
           label: nodeId,
@@ -106,7 +104,7 @@ function FlowCanvas() {
   }, []);
 
   return (
-    <div className="canvas-container">
+    <div style={{ width: "100vw", height: "100vh" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -124,7 +122,7 @@ function FlowCanvas() {
           </div>
         </Panel>
 
-        <Panel position="center-left">
+        <Panel position="top-right">
           <div className="tools-panel">
             <button
               onClick={() => setSelectedTool("select")}
@@ -147,26 +145,16 @@ function FlowCanvas() {
               Add Edge
             </button>
 
-            <button>
-              Add Accepting State
-            </button>
-
-            <button>
-              Add Starting State
-            </button>
-
-            <button>
-              Delete Tool
-            </button>
+            <button>Add Accepting State</button>
+            <button>Add Starting State</button>
+            <button>Delete Tool</button>
           </div>
         </Panel>
 
         {selectedItem && (
           <Panel position="bottom-left">
             <div className="inspector-panel">
-              <h3>
-                Selected {selectedItem.type}
-              </h3>
+              <h3>Selected {selectedItem.type}</h3>
 
               {selectedItem.type === "node" && (
                 <>
@@ -199,7 +187,8 @@ function FlowCanvas() {
                     <strong>To:</strong> {selectedItem.item.target}
                   </p>
                   <p>
-                    <strong>Label:</strong> {selectedItem.item.label || "none"}
+                    <strong>Label:</strong>{" "}
+                    {selectedItem.item.label || "none"}
                   </p>
                 </>
               )}
@@ -207,7 +196,7 @@ function FlowCanvas() {
           </Panel>
         )}
 
-        <Panel position="center-right">
+        <Panel position="bottom-center">
           <div className="regex-panel">
             <label className="regex-label">
               Regex Conversion

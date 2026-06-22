@@ -1,34 +1,35 @@
 :root {
   --text: #6b6375;
   --text-h: #08060d;
-  --bg: #fff;
+  --bg: #ffffff;
+
+  --panel-bg: #ffffff;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
+
   --accent: #aa3bff;
   --accent-bg: rgba(206, 204, 207, 0.915);
   --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --social-bg: rgba(244, 243, 236, 0.5);
+
+  --shadow:
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
+    rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+
+  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
+  --heading: system-ui, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
-  --panel-bg: #ffffff;
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -36,28 +37,43 @@
     --text: #9ca3af;
     --text-h: #662d89;
     --bg: #16171d;
+
+    --panel-bg: #ffffff;
     --border: #9b9c9f;
     --code-bg: #1f2028;
+
     --accent: #c084fc;
     --accent-bg: rgba(192, 132, 252, 0.15);
     --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --social-bg: rgba(47, 48, 58, 0.5);
+
+    --shadow:
+      rgba(0, 0, 0, 0.4) 0 10px 15px -3px,
+      rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
 }
 
-body {
+@media (max-width: 1024px) {
+  :root {
+    font-size: 16px;
+  }
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
   margin: 0;
 }
 
-#root {
-  width: 100vw;
-  height: 100vh;
+body {
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 h1,
@@ -71,20 +87,15 @@ h1 {
   font-size: 56px;
   letter-spacing: -1.68px;
   margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
 }
+
 h2 {
   font-size: 24px;
   line-height: 118%;
   letter-spacing: -0.24px;
   margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
 }
+
 p {
   margin: 0;
 }
@@ -104,18 +115,49 @@ code {
   background: var(--code-bg);
 }
 
+/* React Flow canvas */
+
+.canvas-container {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Default React Flow nodes made circular */
+.react-flow__node-default {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: white;
+  color: var(--accent);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-weight: 600;
+
+  box-shadow:
+    0 4px 0 #c9c9c9,
+    0 6px 10px rgba(0, 0, 0, 0.18);
+}
+
+/* App heading */
 
 .app-heading {
   background: var(--panel-bg);
   color: var(--accent);
   padding: 10px 18px;
   border-radius: 12px;
+
   font-size: 22px;
   font-weight: 600;
+
   box-shadow: var(--shadow);
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.25);
 }
 
+/* Tools panel */
 
 .tools-panel {
   background: var(--panel-bg);
@@ -140,6 +182,7 @@ code {
   font: inherit;
   font-size: 14px;
   font-weight: 600;
+
   cursor: pointer;
 
   box-shadow:
@@ -152,6 +195,49 @@ code {
   border-color: var(--accent-border);
 }
 
+.tools-panel button:active {
+  transform: translateY(3px);
+
+  box-shadow:
+    0 1px 0 #c9c9c9,
+    0 3px 6px rgba(0, 0, 0, 0.18);
+}
+
+.tools-panel button.tool-active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+/* Inspector panel */
+
+.inspector-panel {
+  background: var(--panel-bg);
+  color: #08060d;
+
+  padding: 14px;
+  border-radius: 12px;
+  min-width: 220px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  box-shadow: var(--shadow);
+}
+
+.inspector-panel h3 {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.inspector-panel p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Regex panel */
 
 .regex-panel {
   background: var(--panel-bg);
@@ -194,18 +280,87 @@ code {
   border: 1px solid var(--border);
   border-radius: 8px;
 
-  background: white;
+  background: linear-gradient(to bottom, #ffffff, #eeeeee);
   color: var(--accent);
 
   font: inherit;
   font-size: 14px;
+  font-weight: 600;
+
   cursor: pointer;
+
+  box-shadow:
+    0 4px 0 #c9c9c9,
+    0 6px 10px rgba(0, 0, 0, 0.18);
 }
 
-
-.tools-panel button.tool-active { /*TOOL SELECTED*/
-  background: var(--accent-bg);
+.regex-input-row button:hover {
+  background: linear-gradient(to bottom, #ffffff, #e7e7e7);
   border-color: var(--accent-border);
-  color: var(--accent);
 }
 
+.regex-input-row button:active {
+  transform: translateY(3px);
+
+  box-shadow:
+    0 1px 0 #c9c9c9,
+    0 3px 6px rgba(0, 0, 0, 0.18);
+}
+
+/* Smaller screens */
+
+@media (max-width: 1024px) {
+  h1 {
+    font-size: 36px;
+    margin: 20px 0;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+}
+
+/* Phone layout */
+
+@media (max-width: 600px) {
+  .app-heading {
+    font-size: 16px;
+    padding: 8px 12px;
+  }
+
+  .tools-panel {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .tools-panel button {
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  .regex-panel {
+    width: 90vw;
+    padding: 10px;
+  }
+
+  .regex-label {
+    font-size: 13px;
+  }
+
+  .regex-input-row {
+    flex-direction: column;
+  }
+
+  .regex-input-row input {
+    width: 100%;
+  }
+
+  .regex-input-row button {
+    width: 100%;
+  }
+
+  .inspector-panel {
+    min-width: 180px;
+    max-width: 90vw;
+  }
+}
