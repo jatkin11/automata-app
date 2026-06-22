@@ -73,7 +73,7 @@ function FlowCanvas() {
         ...connection,
         id: `${connection.source}-${connection.target}-${Date.now()}`,
         label: edgeLabel || "",
-        type: "smoothstep",
+        type: "bezier",
       };
 
       setEdges((currentEdges) =>
