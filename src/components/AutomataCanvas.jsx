@@ -68,6 +68,10 @@ function FlowCanvas() {
     console.log("Add starting state tool not built yet");
   }
 
+    function addStartingState() {
+    console.log("Add selection tool not built yet");
+  }
+
   function deleteTool() {
     console.log("Delete tool not built yet");
   }
