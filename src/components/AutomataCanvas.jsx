@@ -43,7 +43,7 @@ async function handleConvertToDFA() {
   console.log("Outgoing JSON object:", automataJson);
   console.log("Outgoing JSON string:", JSON.stringify(automataJson, null, 2));
 
-  const response = await fetch("http://localhost:8080/api/automata/convert-to-dfa", {
+  const response = await fetch("https://automata-backend.onrender.com/api/automata/convert-to-dfa", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
