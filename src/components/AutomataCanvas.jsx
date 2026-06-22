@@ -10,20 +10,27 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  addEdge as addReactFlowEdge,
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
+import "./AutomataCanvas.css";
+import AutomataStateNode from "./AutomataStateNode";
 
 const initialNodes = [];
 const initialEdges = [];
 
+const nodeTypes = {
+  automataState: AutomataStateNode,
+};
+
 function FlowCanvas() {
-  
-    
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  const [selectedTool, setSelectedTool] = useState(null);
+  const [selectedTool, setSelectedTool] = useState("select");
+  const [selectedItem, setSelectedItem] = useState(null);
+
   const nextNodeNumber = useRef(0);
 
   const { screenToFlowPosition } = useReactFlow();
@@ -31,6 +38,7 @@ function FlowCanvas() {
   const handlePaneClick = useCallback(
     (event) => {
       if (selectedTool !== "add-node") {
+        setSelectedItem(null);
         return;
       }
 
@@ -43,7 +51,11 @@ function FlowCanvas() {
 
       const newNode = {
         id: nodeId,
-        position: position,
+        type: "automataState",
+        position: {
+          x: position.x - 30,
+          y: position.y - 30,
+        },
         data: {
           label: nodeId,
         },
@@ -56,34 +68,60 @@ function FlowCanvas() {
     [selectedTool, screenToFlowPosition, setNodes]
   );
 
-  function addEdge() {
-    console.log("Add edge tool not built yet");
-  }
+  const handleConnect = useCallback(
+    (connection) => {
+      if (selectedTool !== "add-edge") {
+        return;
+      }
 
-  function addAcceptingState() {
-    console.log("Add accepting state tool not built yet");
-  }
+      const edgeLabel = prompt("Enter transition symbol:");
 
-  function addStartingState() {
-    console.log("Add starting state tool not built yet");
-  }
+      const newEdge = {
+        ...connection,
+        id: `${connection.source}-${connection.target}-${Date.now()}`,
+        label: edgeLabel || "",
+        type: "smoothstep",
+      };
 
-    function addStartingState() {
-    console.log("Add selection tool not built yet");
-  }
+      setEdges((currentEdges) =>
+        addReactFlowEdge(newEdge, currentEdges)
+      );
+    },
+    [selectedTool, setEdges]
+  );
 
-  function deleteTool() {
-    console.log("Delete tool not built yet");
-  }
+  const handleSelectionChange = useCallback(({ nodes, edges }) => {
+    if (nodes.length > 0) {
+      setSelectedItem({
+        type: "node",
+        item: nodes[0],
+      });
+      return;
+    }
+
+    if (edges.length > 0) {
+      setSelectedItem({
+        type: "edge",
+        item: edges[0],
+      });
+      return;
+    }
+
+    setSelectedItem(null);
+  }, []);
 
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
+    <div className="canvas-container">
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onPaneClick={handlePaneClick}
+        onConnect={handleConnect}
+        onSelectionChange={handleSelectionChange}
+        nodesConnectable={selectedTool === "add-edge"}
         fitView
       >
         <Panel position="top-left">
@@ -95,54 +133,91 @@ function FlowCanvas() {
         <Panel position="center-left">
           <div className="tools-panel">
             <button
+              onClick={() => setSelectedTool("select")}
+              className={selectedTool === "select" ? "tool-active" : ""}
+            >
+              Select / Move
+            </button>
+
+            <button
               onClick={() => setSelectedTool("add-node")}
               className={selectedTool === "add-node" ? "tool-active" : ""}
             >
               Add Node
             </button>
 
-             <button
+            <button
               onClick={() => setSelectedTool("add-edge")}
               className={selectedTool === "add-edge" ? "tool-active" : ""}
             >
               Add Edge
             </button>
 
-             <button
-              onClick={() => setSelectedTool("add-accepting")}
-              className={selectedTool === "add-accepting" ? "tool-active" : ""}
-            >
+            <button>
               Add Accepting State
             </button>
 
-
-
-             <button
-              onClick={() => setSelectedTool("add-starting")}
-              className={selectedTool === "add-starting" ? "tool-active" : ""}
-            >
+            <button>
               Add Starting State
             </button>
 
-                         <button
-              onClick={() => setSelectedTool("add-selection")}
-              className={selectedTool === "add-selection" ? "tool-active" : ""}
-            >
-              Selection Tool
-            </button>
-
-             <button
-              onClick={() => setSelectedTool("add-delete")}
-              className={selectedTool === "add-delete" ? "tool-active" : ""}
-            >
+            <button>
               Delete Tool
             </button>
           </div>
         </Panel>
 
+        {selectedItem && (
+          <Panel position="bottom-left">
+            <div className="inspector-panel">
+              <h3>
+                Selected {selectedItem.type}
+              </h3>
+
+              {selectedItem.type === "node" && (
+                <>
+                  <p>
+                    <strong>ID:</strong> {selectedItem.item.id}
+                  </p>
+                  <p>
+                    <strong>Label:</strong> {selectedItem.item.data?.label}
+                  </p>
+                  <p>
+                    <strong>X:</strong>{" "}
+                    {Math.round(selectedItem.item.position.x)}
+                  </p>
+                  <p>
+                    <strong>Y:</strong>{" "}
+                    {Math.round(selectedItem.item.position.y)}
+                  </p>
+                </>
+              )}
+
+              {selectedItem.type === "edge" && (
+                <>
+                  <p>
+                    <strong>ID:</strong> {selectedItem.item.id}
+                  </p>
+                  <p>
+                    <strong>From:</strong> {selectedItem.item.source}
+                  </p>
+                  <p>
+                    <strong>To:</strong> {selectedItem.item.target}
+                  </p>
+                  <p>
+                    <strong>Label:</strong> {selectedItem.item.label || "none"}
+                  </p>
+                </>
+              )}
+            </div>
+          </Panel>
+        )}
+
         <Panel position="center-right">
           <div className="regex-panel">
-            <label className="regex-label">Regex Conversion</label>
+            <label className="regex-label">
+              Regex Conversion
+            </label>
 
             <div className="regex-input-row">
               <input
