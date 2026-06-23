@@ -46,16 +46,26 @@ function FlowCanvas() {
   }
 
   async function convertNfaToDfa() {
-    const result = handleConvertToDFA(getCurrentGraph());
+    const result = await handleConvertToDFA(getCurrentGraph());
+
+    if (!result) {
+      return;
+    }
+
     setNodes(result.nodes);
     setEdges(result.edges);
   }
 
-  async function ConvertRegexToNFA(regexInput){
-    const result = handleConvertFromRegexToNFA(regexInput)
+  async function convertRegexToNFA(regexInput) {
+    const result = await handleConvertFromRegexToNFA(regexInput);
+
+    if (!result) {
+      return;
+    }
+
     setNodes(result.nodes);
     setEdges(result.edges);
-  }
+}
 
 
   const handlePaneClick = useCallback(
@@ -248,7 +258,9 @@ function FlowCanvas() {
                   value={regexInput}
                   onChange={(event) => setRegexInput(event.target.value)}
                 />
-                <button onClick={()=> {ConvertRegexToNFA(regexInput)}}>Convert to NFA</button>
+                <button onClick={() => convertRegexToNFA(regexInput)}>
+                  Convert to NFA
+                </button>
               </div>
             </div>
           </div>
