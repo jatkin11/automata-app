@@ -14,6 +14,8 @@ import {
   addEdge as addReactFlowEdge,
 } from "@xyflow/react";
 
+import dagre from "@dagrejs/dagre";
+
 import "@xyflow/react/dist/style.css";
 
 import {
@@ -24,6 +26,9 @@ import {
 
 const initialNodes = [];
 const initialEdges = [];
+
+const NODE_WIDTH = 150;
+const NODE_HEIGHT = 60;
 
 function FlowCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -39,7 +44,7 @@ function FlowCanvas() {
 
   const nextNodeNumber = useRef(0);
 
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
 
   const selectedNode =
     selectedItem?.type === "node"
@@ -72,7 +77,7 @@ function FlowCanvas() {
   function makeArrowEdges(graphEdges) {
     return graphEdges.map((edge) => ({
       ...edge,
-      type: "default",
+      type: edge.source === edge.target ? "smoothstep" : "default",
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
@@ -124,6 +129,49 @@ function FlowCanvas() {
     });
   }
 
+  function autoLayoutNodes(graphNodes, graphEdges, direction = "LR") {
+    const dagreGraph = new dagre.graphlib.Graph();
+
+    dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+    dagreGraph.setGraph({
+      rankdir: direction,
+      nodesep: 80,
+      ranksep: 120,
+    });
+
+    graphNodes.forEach((node) => {
+      dagreGraph.setNode(node.id, {
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
+      });
+    });
+
+    graphEdges.forEach((edge) => {
+      if (edge.source !== edge.target) {
+        dagreGraph.setEdge(edge.source, edge.target);
+      }
+    });
+
+    dagre.layout(dagreGraph);
+
+    return graphNodes.map((node) => {
+      const layoutedNode = dagreGraph.node(node.id);
+
+      if (!layoutedNode) {
+        return node;
+      }
+
+      return {
+        ...node,
+        position: {
+          x: layoutedNode.x - NODE_WIDTH / 2,
+          y: layoutedNode.y - NODE_HEIGHT / 2,
+        },
+      };
+    });
+  }
+
   function getCurrentGraph() {
     return {
       automataType,
@@ -161,8 +209,9 @@ function FlowCanvas() {
 
     const mergedEdges = mergeParallelEdges(returnedEdges);
     const styledEdges = makeArrowEdges(mergedEdges);
+    const layoutedNodes = autoLayoutNodes(returnedNodes, styledEdges, "LR");
 
-    setNodes(returnedNodes);
+    setNodes(layoutedNodes);
     setEdges(styledEdges);
 
     if (result.automataType) {
@@ -170,7 +219,14 @@ function FlowCanvas() {
     }
 
     setSelectedItem(null);
-    updateNextNodeNumberFromGraph(returnedNodes);
+    updateNextNodeNumberFromGraph(layoutedNodes);
+
+    setTimeout(() => {
+      fitView({
+        padding: 0.2,
+        duration: 300,
+      });
+    }, 0);
   }
 
   async function convertNfaToDfa() {
@@ -193,6 +249,20 @@ function FlowCanvas() {
     }
 
     setConvertedRegex(result);
+  }
+
+  function autoLayoutCurrentGraph() {
+    const layoutedNodes = autoLayoutNodes(nodes, edges, "LR");
+
+    setNodes(layoutedNodes);
+    setSelectedItem(null);
+
+    setTimeout(() => {
+      fitView({
+        padding: 0.2,
+        duration: 300,
+      });
+    }, 0);
   }
 
   const handlePaneClick = useCallback(
@@ -326,7 +396,9 @@ function FlowCanvas() {
         return;
       }
 
-      const edgeLabel = prompt("Enter transition symbol(s), e.g. a or a,b or ε:");
+      const edgeLabel = prompt(
+        "Enter transition symbol(s), e.g. a or a,b or ε:"
+      );
 
       if (!edgeLabel) {
         return;
@@ -350,11 +422,13 @@ function FlowCanvas() {
           );
         }
 
+        const isSelfLoop = connection.source === connection.target;
+
         const newEdge = {
           ...connection,
           id: `${connection.source}-${connection.target}-${Date.now()}`,
           label: edgeLabel,
-          type: "default",
+          type: isSelfLoop ? "smoothstep" : "default",
           markerEnd: {
             type: MarkerType.ArrowClosed,
           },
@@ -471,6 +545,10 @@ function FlowCanvas() {
                 className={selectedTool === "delete" ? "tool-active" : ""}
               >
                 Delete Tool
+              </button>
+
+              <button onClick={autoLayoutCurrentGraph}>
+                Auto Layout
               </button>
             </div>
 
