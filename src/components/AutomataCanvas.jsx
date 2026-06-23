@@ -423,9 +423,6 @@ function FlowCanvas() {
                 <>
                   <h3>Selected node</h3>
 
-                  <p>
-                    <strong>ID:</strong> {selectedNode.id}
-                  </p>
 
                   <p>
                     <strong>Label:</strong> {selectedNode.data?.label}
@@ -441,25 +438,13 @@ function FlowCanvas() {
                     {selectedNode.data?.accepting ? "Yes" : "No"}
                   </p>
 
-                  <p>
-                    <strong>X:</strong>{" "}
-                    {Math.round(selectedNode.position.x)}
-                  </p>
 
-                  <p>
-                    <strong>Y:</strong>{" "}
-                    {Math.round(selectedNode.position.y)}
-                  </p>
                 </>
               )}
 
               {selectedEdge && (
                 <>
                   <h3>Selected edge</h3>
-
-                  <p>
-                    <strong>ID:</strong> {selectedEdge.id}
-                  </p>
 
                   <p>
                     <strong>From:</strong> {selectedEdge.source}
