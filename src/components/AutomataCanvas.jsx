@@ -14,7 +14,7 @@ import {
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
-import { handleConvertToDFA } from "../api/automataApi";
+import { handleConvertFromRegexToNFA, handleConvertToDFA } from "../api/automataApi";
 import { handleConvertFromAutomataToRegex } from "../api/automataApi";
 
 const initialNodes = [];
@@ -29,6 +29,8 @@ function FlowCanvas() {
 
   const [automataType, setAutomataType] = useState("NFA");
   const [convertedRegex, setConvertedRegex] = useState("");
+
+  const [regexInput, setRegexInput] = useState("");
 
   const nextNodeNumber = useRef(0);
 
@@ -47,7 +49,12 @@ function FlowCanvas() {
     const result = handleConvertToDFA(getCurrentGraph());
     setNodes(result.nodes);
     setEdges(result.edges);
+  }
 
+  async function ConvertRegexToNFA(regexInput){
+    const result = handleConvertFromRegexToNFA(regexInput)
+    setNodes(result.nodes);
+    setEdges(result.edges);
   }
 
 
@@ -238,8 +245,10 @@ function FlowCanvas() {
                 <input
                   type="text"
                   placeholder="e.g. (a|b)*abb"
+                  value={regexInput}
+                  onChange={(event) => setRegexInput(event.target.value)}
                 />
-                <button>Convert to NFA</button>
+                <button onClick={()=> {ConvertRegexToNFA(regexInput)}}>Convert to NFA</button>
               </div>
             </div>
           </div>
