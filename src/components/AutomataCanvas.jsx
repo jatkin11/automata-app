@@ -14,8 +14,12 @@ import {
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
-import { handleConvertFromRegexToNFA, handleConvertToDFA } from "../api/automataApi";
-import { handleConvertFromAutomataToRegex } from "../api/automataApi";
+
+import {
+  handleConvertFromRegexToNFA,
+  handleConvertToDFA,
+  handleConvertFromAutomataToRegex,
+} from "../api/automataApi";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -36,37 +40,84 @@ function FlowCanvas() {
 
   const { screenToFlowPosition } = useReactFlow();
 
+  const selectedNode =
+    selectedItem?.type === "node"
+      ? nodes.find((node) => node.id === selectedItem.id)
+      : null;
 
-  function getCurrentGraph(){
+  const selectedEdge =
+    selectedItem?.type === "edge"
+      ? edges.find((edge) => edge.id === selectedItem.id)
+      : null;
+
+  function getCurrentGraph() {
     return {
       automataType,
       nodes,
       edges,
+    };
+  }
+
+  function updateNextNodeNumberFromGraph(graphNodes) {
+    let highestNodeNumber = -1;
+
+    graphNodes.forEach((node) => {
+      const textToCheck = `${node.id} ${node.data?.label ?? ""}`;
+      const matches = textToCheck.matchAll(/q(\d+)/g);
+
+      for (const match of matches) {
+        const number = Number(match[1]);
+
+        if (number > highestNodeNumber) {
+          highestNodeNumber = number;
+        }
+      }
+    });
+
+    nextNodeNumber.current = highestNodeNumber + 1;
+  }
+
+  function applyReturnedGraph(result) {
+    if (!result) {
+      return;
     }
+
+    const returnedNodes = result.nodes ?? [];
+    const returnedEdges = result.edges ?? [];
+
+    setNodes(returnedNodes);
+    setEdges(returnedEdges);
+
+    if (result.automataType) {
+      setAutomataType(result.automataType);
+    }
+
+    setSelectedItem(null);
+    updateNextNodeNumberFromGraph(returnedNodes);
   }
 
   async function convertNfaToDfa() {
     const result = await handleConvertToDFA(getCurrentGraph());
 
-    if (!result) {
-      return;
-    }
-
-    setNodes(result.nodes);
-    setEdges(result.edges);
+    applyReturnedGraph(result);
   }
 
   async function convertRegexToNFA(regexInput) {
     const result = await handleConvertFromRegexToNFA(regexInput);
 
+    applyReturnedGraph(result);
+    setAutomataType("NFA");
+  }
+
+  async function convertToRegex() {
+    const result = await handleConvertFromAutomataToRegex(getCurrentGraph());
+
     if (!result) {
       return;
     }
 
-    setNodes(result.nodes);
-    setEdges(result.edges);
-}
-
+    setConvertedRegex(result);
+  }
 
   const handlePaneClick = useCallback(
     (event) => {
@@ -90,14 +141,107 @@ function FlowCanvas() {
         },
         data: {
           label: nodeId,
+          start: false,
+          accepting: false,
         },
       };
 
       setNodes((currentNodes) => [...currentNodes, newNode]);
 
+      setSelectedItem({
+        type: "node",
+        id: nodeId,
+      });
+
       nextNodeNumber.current = nextNodeNumber.current + 1;
     },
     [selectedTool, screenToFlowPosition, setNodes]
+  );
+
+  const handleNodeClick = useCallback(
+    (event, clickedNode) => {
+      setSelectedItem({
+        type: "node",
+        id: clickedNode.id,
+      });
+
+      if (selectedTool === "delete") {
+        setNodes((currentNodes) =>
+          currentNodes.filter((node) => node.id !== clickedNode.id)
+        );
+
+        setEdges((currentEdges) =>
+          currentEdges.filter(
+            (edge) =>
+              edge.source !== clickedNode.id && edge.target !== clickedNode.id
+          )
+        );
+
+        setSelectedItem(null);
+        return;
+      }
+
+      if (selectedTool === "add-accepting-state") {
+        setNodes((currentNodes) =>
+          currentNodes.map((node) =>
+            node.id === clickedNode.id
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    accepting: !Boolean(node.data?.accepting),
+                  },
+                }
+              : node
+          )
+        );
+
+        return;
+      }
+
+      if (selectedTool === "add-start-state") {
+        setNodes((currentNodes) => {
+          const clickedNodeInCurrentState = currentNodes.find(
+            (node) => node.id === clickedNode.id
+          );
+
+          const clickedNodeAlreadyStart = Boolean(
+            clickedNodeInCurrentState?.data?.start
+          );
+
+          return currentNodes.map((node) => ({
+            ...node,
+            data: {
+              ...node.data,
+              start: clickedNodeAlreadyStart
+                ? false
+                : node.id === clickedNode.id,
+            },
+          }));
+        });
+      }
+    },
+    [selectedTool, setNodes, setEdges]
+  );
+
+  const handleEdgeClick = useCallback(
+    (event, clickedEdge) => {
+      event.stopPropagation();
+
+      setSelectedItem({
+        type: "edge",
+        id: clickedEdge.id,
+      });
+
+      if (selectedTool === "delete") {
+        setEdges((currentEdges) =>
+          currentEdges.filter((edge) => edge.id !== clickedEdge.id)
+        );
+
+        setSelectedItem(null);
+      }
+    },
+    [selectedTool, setEdges]
   );
 
   const handleConnect = useCallback(
@@ -112,7 +256,7 @@ function FlowCanvas() {
         ...connection,
         id: `${connection.source}-${connection.target}-${Date.now()}`,
         label: edgeLabel || "",
-        type: "bezier",
+        type: "default",
       };
 
       setEdges((currentEdges) =>
@@ -126,7 +270,7 @@ function FlowCanvas() {
     if (nodes.length > 0) {
       setSelectedItem({
         type: "node",
-        item: nodes[0],
+        id: nodes[0].id,
       });
       return;
     }
@@ -134,18 +278,13 @@ function FlowCanvas() {
     if (edges.length > 0) {
       setSelectedItem({
         type: "edge",
-        item: edges[0],
+        id: edges[0].id,
       });
       return;
     }
 
     setSelectedItem(null);
   }, []);
-
-  function ConvertToRegex() {
-    setConvertedRegex(handleConvertFromAutomataToRegex(getCurrentGraph()));
-  }
-
 
   return (
     <div className="canvas-container">
@@ -155,6 +294,8 @@ function FlowCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onPaneClick={handlePaneClick}
+        onNodeClick={handleNodeClick}
+        onEdgeClick={handleEdgeClick}
         onConnect={handleConnect}
         onSelectionChange={handleSelectionChange}
         nodesConnectable={selectedTool === "add-edge"}
@@ -206,22 +347,30 @@ function FlowCanvas() {
                 Add Edge
               </button>
 
-              <button onClick={() => setSelectedTool("add-accepting-state")} 
-              className={selectedTool === "add-accepting-state" ? "tool-active" : ""}
+              <button
+                onClick={() => setSelectedTool("add-accepting-state")}
+                className={
+                  selectedTool === "add-accepting-state" ? "tool-active" : ""
+                }
               >
                 Add Accepting State
               </button>
 
-              <button onClick={() => setSelectedTool("add-start-state")}
-              className={selectedTool === "add-start-state" ?  "tool-active" : ""}
+              <button
+                onClick={() => setSelectedTool("add-start-state")}
+                className={
+                  selectedTool === "add-start-state" ? "tool-active" : ""
+                }
               >
                 Add Starting State
-                </button>
+              </button>
 
-              <button onClick={()=> setSelectedTool("delete")}
-              className={selectedTool === "delete" ? "tool-active" : ""}  
+              <button
+                onClick={() => setSelectedTool("delete")}
+                className={selectedTool === "delete" ? "tool-active" : ""}
               >
-                Delete Tool</button>
+                Delete Tool
+              </button>
             </div>
 
             <div className="conversion-panel">
@@ -235,7 +384,7 @@ function FlowCanvas() {
                 </button>
               )}
 
-              <button onClick={ConvertToRegex}>
+              <button onClick={convertToRegex}>
                 Convert to Regex
               </button>
 
@@ -258,6 +407,7 @@ function FlowCanvas() {
                   value={regexInput}
                   onChange={(event) => setRegexInput(event.target.value)}
                 />
+
                 <button onClick={() => convertRegexToNFA(regexInput)}>
                   Convert to NFA
                 </button>
@@ -266,46 +416,62 @@ function FlowCanvas() {
           </div>
         </Panel>
 
-        {selectedItem && (
+        {(selectedNode || selectedEdge) && (
           <Panel position="bottom-right">
             <div className="inspector-panel">
-              <h3>
-                Selected {selectedItem.type}
-              </h3>
-
-              {selectedItem.type === "node" && (
+              {selectedNode && (
                 <>
+                  <h3>Selected node</h3>
+
                   <p>
-                    <strong>ID:</strong> {selectedItem.item.id}
+                    <strong>ID:</strong> {selectedNode.id}
                   </p>
+
                   <p>
-                    <strong>Label:</strong> {selectedItem.item.data?.label}
+                    <strong>Label:</strong> {selectedNode.data?.label}
                   </p>
+
+                  <p>
+                    <strong>Start state:</strong>{" "}
+                    {selectedNode.data?.start ? "Yes" : "No"}
+                  </p>
+
+                  <p>
+                    <strong>Accepting state:</strong>{" "}
+                    {selectedNode.data?.accepting ? "Yes" : "No"}
+                  </p>
+
                   <p>
                     <strong>X:</strong>{" "}
-                    {Math.round(selectedItem.item.position.x)}
+                    {Math.round(selectedNode.position.x)}
                   </p>
+
                   <p>
                     <strong>Y:</strong>{" "}
-                    {Math.round(selectedItem.item.position.y)}
+                    {Math.round(selectedNode.position.y)}
                   </p>
                 </>
               )}
 
-              {selectedItem.type === "edge" && (
+              {selectedEdge && (
                 <>
+                  <h3>Selected edge</h3>
+
                   <p>
-                    <strong>ID:</strong> {selectedItem.item.id}
+                    <strong>ID:</strong> {selectedEdge.id}
                   </p>
+
                   <p>
-                    <strong>From:</strong> {selectedItem.item.source}
+                    <strong>From:</strong> {selectedEdge.source}
                   </p>
+
                   <p>
-                    <strong>To:</strong> {selectedItem.item.target}
+                    <strong>To:</strong> {selectedEdge.target}
                   </p>
+
                   <p>
                     <strong>Label:</strong>{" "}
-                    {selectedItem.item.label || "none"}
+                    {selectedEdge.label || "none"}
                   </p>
                 </>
               )}
