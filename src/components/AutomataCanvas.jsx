@@ -373,7 +373,17 @@ function FlowCanvas() {
                 className={selectedTool === "delete" ? "tool-active" : ""}
               >
                 Delete Tool
+              </button>              
+              
+              <button
+                onClick={() => {
+                  const layoutedNodes = layoutGraph(nodes, edges, "LR");
+                  setNodes(layoutedNodes);
+                }}
+              >
+                Auto Arrange
               </button>
+              
             </div>
 
             <div className="conversion-panel">
@@ -390,6 +400,8 @@ function FlowCanvas() {
               <button onClick={convertToRegex}>
                 Convert to Regex
               </button>
+
+
 
               {convertedRegex && (
                 <div className="converted-regex-output">
