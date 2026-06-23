@@ -7,11 +7,11 @@ import {
   BackgroundVariant,
   Controls,
   Panel,
+  MarkerType,
   useEdgesState,
   useNodesState,
   useReactFlow,
   addEdge as addReactFlowEdge,
-  SmoothStepEdge,
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
@@ -89,12 +89,15 @@ function FlowCanvas() {
 
     const layoutedNodes = layoutGraph(returnedNodes, returnedEdges, "LR");
     const styledEdges = returnedEdges.map((edge) => ({
-    ...edge,
-    type: 'smoothstep',
-    style: {
-      ...edge.style,
-      strokeWidth: 3,
-    },
+      ...edge,
+      type: edge.type ?? "default",
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+      },
+      style: {
+        ...edge.style,
+        strokeWidth: 3,
+      },
   }));
 
     setNodes(layoutedNodes);
@@ -269,6 +272,12 @@ function FlowCanvas() {
         id: `${connection.source}-${connection.target}-${Date.now()}`,
         label: edgeLabel || "",
         type: "default",
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+        },
+        style: {
+          strokeWidth: 3,
+        },
       };
 
       setEdges((currentEdges) =>
