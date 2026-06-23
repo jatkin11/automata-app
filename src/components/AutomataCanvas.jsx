@@ -90,7 +90,7 @@ function FlowCanvas() {
     const layoutedNodes = layoutGraph(returnedNodes, returnedEdges, "LR");
     const styledEdges = returnedEdges.map((edge) => ({
     ...edge,
-    type: SmoothStepEdge,
+    type: 'smoothstep',
     style: {
       ...edge.style,
       strokeWidth: 3,
