@@ -167,6 +167,15 @@ p {
     0 3px 6px rgba(0, 0, 0, 0.18);
 }
 
+.floating-edge-label {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* Active buttons */
 
 .tools-panel button.tool-active,
