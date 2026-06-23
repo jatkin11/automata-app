@@ -18,8 +18,8 @@ export async function handleConvertToDFA(graph) {
     return;
   }
 
-  const result = await response.json();
-  console.log("Converted DFA:", result);
+  return await response.json();
+
 }
 
 export async function handleConvertFromAutomataToRegex(graph){
@@ -40,8 +40,7 @@ export async function handleConvertFromAutomataToRegex(graph){
     return;
   }
 
-  const result = await response.json();
-  console.log("Converted Regex:", result);
+  return await response.json();
 
 }
 
@@ -63,7 +62,6 @@ export async function handleConvertFromRegexToNFA(regexText){
     return;
   }
 
-  const result = await response.json();
-  console.log("Converted Regex:", result);
+  return await response.json();
 
 }

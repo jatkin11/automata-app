@@ -44,11 +44,13 @@ function FlowCanvas() {
   }
 
   async function convertNfaToDfa() {
-    return handleConvertToDFA(getCurrentGraph());
-    ;
+    const result = handleConvertToDFA(getCurrentGraph());
+    setNodes(result.nodes);
+    setEdges(result.edges);
+
   }
 
-  
+
   const handlePaneClick = useCallback(
     (event) => {
       if (selectedTool !== "add-node") {
