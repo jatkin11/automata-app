@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback } from "react";
 
 import {
   ReactFlow,
@@ -22,8 +22,6 @@ import {
   handleConvertFromAutomataToRegex,
 } from "../api/automataApi";
 
-import FloatingEdge from "./FloatingEdge";
-
 const initialNodes = [];
 const initialEdges = [];
 
@@ -43,13 +41,6 @@ function FlowCanvas() {
 
   const { screenToFlowPosition } = useReactFlow();
 
-  const edgeTypes = useMemo(
-    () => ({
-      floating: FloatingEdge,
-    }),
-    []
-  );
-
   const selectedNode =
     selectedItem?.type === "node"
       ? nodes.find((node) => node.id === selectedItem.id)
@@ -60,18 +51,28 @@ function FlowCanvas() {
       ? edges.find((edge) => edge.id === selectedItem.id)
       : null;
 
-  function getCurrentGraph() {
-    return {
-      automataType,
-      nodes,
-      edges,
-    };
+  function splitEdgeLabel(label) {
+    return String(label || "")
+      .split(",")
+      .map((symbol) => symbol.trim())
+      .filter(Boolean);
   }
 
-  function makeFloatingEdges(graphEdges) {
+  function mergeEdgeLabels(existingLabel, newLabel) {
+    const existingSymbols = splitEdgeLabel(existingLabel);
+    const newSymbols = splitEdgeLabel(newLabel);
+
+    const mergedSymbols = Array.from(
+      new Set([...existingSymbols, ...newSymbols])
+    );
+
+    return mergedSymbols.join(",");
+  }
+
+  function makeArrowEdges(graphEdges) {
     return graphEdges.map((edge) => ({
       ...edge,
-      type: "floating",
+      type: "default",
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
@@ -80,6 +81,55 @@ function FlowCanvas() {
         strokeWidth: 3,
       },
     }));
+  }
+
+  function mergeParallelEdges(graphEdges) {
+    const edgeMap = new Map();
+
+    graphEdges.forEach((edge) => {
+      const key = `${edge.source}->${edge.target}`;
+
+      if (!edgeMap.has(key)) {
+        edgeMap.set(key, {
+          ...edge,
+          label: edge.label || "",
+        });
+        return;
+      }
+
+      const existingEdge = edgeMap.get(key);
+
+      edgeMap.set(key, {
+        ...existingEdge,
+        label: mergeEdgeLabels(existingEdge.label, edge.label),
+      });
+    });
+
+    return Array.from(edgeMap.values());
+  }
+
+  function expandEdgesForBackend(graphEdges) {
+    return graphEdges.flatMap((edge) => {
+      const symbols = splitEdgeLabel(edge.label);
+
+      if (symbols.length === 0) {
+        return [edge];
+      }
+
+      return symbols.map((symbol) => ({
+        ...edge,
+        id: `${edge.source}-${symbol}-${edge.target}`,
+        label: symbol,
+      }));
+    });
+  }
+
+  function getCurrentGraph() {
+    return {
+      automataType,
+      nodes,
+      edges: expandEdgesForBackend(edges),
+    };
   }
 
   function updateNextNodeNumberFromGraph(graphNodes) {
@@ -107,10 +157,13 @@ function FlowCanvas() {
     }
 
     const returnedNodes = result.nodes ?? [];
-    const returnedEdges = makeFloatingEdges(result.edges ?? []);
+    const returnedEdges = result.edges ?? [];
+
+    const mergedEdges = mergeParallelEdges(returnedEdges);
+    const styledEdges = makeArrowEdges(mergedEdges);
 
     setNodes(returnedNodes);
-    setEdges(returnedEdges);
+    setEdges(styledEdges);
 
     if (result.automataType) {
       setAutomataType(result.automataType);
@@ -273,22 +326,45 @@ function FlowCanvas() {
         return;
       }
 
-      const edgeLabel = prompt("Enter transition symbol:");
+      const edgeLabel = prompt("Enter transition symbol(s), e.g. a or a,b or ε:");
 
-      const newEdge = {
-        ...connection,
-        id: `${connection.source}-${connection.target}-${Date.now()}`,
-        label: edgeLabel || "",
-        type: "floating",
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-        },
-        style: {
-          strokeWidth: 3,
-        },
-      };
+      if (!edgeLabel) {
+        return;
+      }
 
-      setEdges((currentEdges) => addReactFlowEdge(newEdge, currentEdges));
+      setEdges((currentEdges) => {
+        const existingEdge = currentEdges.find(
+          (edge) =>
+            edge.source === connection.source &&
+            edge.target === connection.target
+        );
+
+        if (existingEdge) {
+          return currentEdges.map((edge) =>
+            edge.id === existingEdge.id
+              ? {
+                  ...edge,
+                  label: mergeEdgeLabels(edge.label, edgeLabel),
+                }
+              : edge
+          );
+        }
+
+        const newEdge = {
+          ...connection,
+          id: `${connection.source}-${connection.target}-${Date.now()}`,
+          label: edgeLabel,
+          type: "default",
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+          },
+          style: {
+            strokeWidth: 3,
+          },
+        };
+
+        return addReactFlowEdge(newEdge, currentEdges);
+      });
     },
     [selectedTool, setEdges]
   );
@@ -318,7 +394,6 @@ function FlowCanvas() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onPaneClick={handlePaneClick}
@@ -403,10 +478,14 @@ function FlowCanvas() {
               <div className="conversion-title">{automataType} Conversion</div>
 
               {automataType === "NFA" && (
-                <button onClick={convertNfaToDfa}>Convert to DFA</button>
+                <button onClick={convertNfaToDfa}>
+                  Convert to DFA
+                </button>
               )}
 
-              <button onClick={convertToRegex}>Convert to Regex</button>
+              <button onClick={convertToRegex}>
+                Convert to Regex
+              </button>
 
               {convertedRegex && (
                 <div className="converted-regex-output">
@@ -416,7 +495,9 @@ function FlowCanvas() {
             </div>
 
             <div className="regex-panel">
-              <label className="regex-label">Regex Conversion</label>
+              <label className="regex-label">
+                Regex Conversion
+              </label>
 
               <div className="regex-input-row">
                 <input
@@ -497,7 +578,11 @@ function FlowCanvas() {
           </Panel>
         )}
 
-        <Background variant={BackgroundVariant.Lines} gap={24} size={1} />
+        <Background
+          variant={BackgroundVariant.Lines}
+          gap={24}
+          size={1}
+        />
 
         <Controls />
       </ReactFlow>
