@@ -11,6 +11,7 @@ import {
   useNodesState,
   useReactFlow,
   addEdge as addReactFlowEdge,
+  SmoothStepEdge,
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
@@ -87,9 +88,17 @@ function FlowCanvas() {
     const returnedEdges = result.edges ?? [];
 
     const layoutedNodes = layoutGraph(returnedNodes, returnedEdges, "LR");
+    const styledEdges = returnedEdges.map((edge) => ({
+    ...edge,
+    type: SmoothStepEdge,
+    style: {
+      ...edge.style,
+      strokeWidth: 3,
+    },
+  }));
 
     setNodes(layoutedNodes);
-    setEdges(returnedEdges);
+    setEdges(styledEdges);
 
     if (result.automataType) {
       setAutomataType(result.automataType);
@@ -383,7 +392,7 @@ function FlowCanvas() {
               >
                 Auto Arrange
               </button>
-              
+
             </div>
 
             <div className="conversion-panel">
