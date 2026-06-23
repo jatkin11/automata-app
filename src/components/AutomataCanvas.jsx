@@ -14,6 +14,8 @@ import {
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
+import { handleConvertToDFA } from "../api/automataApi";
+import { handleConvertFromAutomataToRegex } from "../api/automataApi";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -32,37 +34,21 @@ function FlowCanvas() {
 
   const { screenToFlowPosition } = useReactFlow();
 
-async function handleConvertToDFA() {
-  const graph = {
-    automataType: automataType,
-    nodes: nodes,
-    edges: edges,
-  };
 
-  const response = await fetch(
-    "https://automata-backend.onrender.com/api/automata/convert-to-dfa",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(graph),
+  function getCurrentGraph(){
+    return {
+      automataType,
+      nodes,
+      edges,
     }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Backend error:", response.status, errorText);
-    return;
   }
 
-  const result = await response.json();
-  console.log("Converted DFA:", result);
-}
+  async function convertNfaToDfa() {
+    return handleConvertToDFA(getCurrentGraph());
+    ;
+  }
 
-
-
-
+  
   const handlePaneClick = useCallback(
     (event) => {
       if (selectedTool !== "add-node") {
@@ -107,7 +93,7 @@ async function handleConvertToDFA() {
         ...connection,
         id: `${connection.source}-${connection.target}-${Date.now()}`,
         label: edgeLabel || "",
-        type: "smoothstep",
+        type: "bezier",
       };
 
       setEdges((currentEdges) =>
@@ -137,8 +123,8 @@ async function handleConvertToDFA() {
     setSelectedItem(null);
   }, []);
 
-  function handleConvertToRegex() {
-    setConvertedRegex("(placeholder-regex)");
+  function ConvertToRegex() {
+    setConvertedRegex(handleConvertFromAutomataToRegex(getCurrentGraph()));
   }
 
 
@@ -201,9 +187,22 @@ async function handleConvertToDFA() {
                 Add Edge
               </button>
 
-              <button>Add Accepting State</button>
-              <button>Add Starting State</button>
-              <button>Delete Tool</button>
+              <button onClick={() => setSelectedTool("add-accepting-state")} 
+              className={selectedTool === "add-accepting-state" ? "tool-active" : ""}
+              >
+                Add Accepting State
+              </button>
+
+              <button onClick={() => setSelectedTool("add-start-state")}
+              className={selectedTool === "add-start-state" ?  "tool-active" : ""}
+              >
+                Add Starting State
+                </button>
+
+              <button onClick={()=> setSelectedTool("delete")}
+              className={selectedTool === "delete" ? "tool-active" : ""}  
+              >
+                Delete Tool</button>
             </div>
 
             <div className="conversion-panel">
@@ -212,12 +211,12 @@ async function handleConvertToDFA() {
               </div>
 
               {automataType === "NFA" && (
-                <button onClick={handleConvertToDFA}>
+                <button onClick={convertNfaToDfa}>
                   Convert to DFA
                 </button>
               )}
 
-              <button onClick={handleConvertToRegex}>
+              <button onClick={ConvertToRegex}>
                 Convert to Regex
               </button>
 
