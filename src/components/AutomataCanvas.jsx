@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 
 import {
   ReactFlow,
@@ -15,13 +15,14 @@ import {
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
-import { layoutGraph } from "../utils/graphAutoLayout";
 
 import {
   handleConvertFromRegexToNFA,
   handleConvertToDFA,
   handleConvertFromAutomataToRegex,
 } from "../api/automataApi";
+
+import FloatingEdge from "./FloatingEdge";
 
 const initialNodes = [];
 const initialEdges = [];
@@ -42,6 +43,13 @@ function FlowCanvas() {
 
   const { screenToFlowPosition } = useReactFlow();
 
+  const edgeTypes = useMemo(
+    () => ({
+      floating: FloatingEdge,
+    }),
+    []
+  );
+
   const selectedNode =
     selectedItem?.type === "node"
       ? nodes.find((node) => node.id === selectedItem.id)
@@ -58,6 +66,20 @@ function FlowCanvas() {
       nodes,
       edges,
     };
+  }
+
+  function makeFloatingEdges(graphEdges) {
+    return graphEdges.map((edge) => ({
+      ...edge,
+      type: "floating",
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+      },
+      style: {
+        ...edge.style,
+        strokeWidth: 3,
+      },
+    }));
   }
 
   function updateNextNodeNumberFromGraph(graphNodes) {
@@ -85,35 +107,21 @@ function FlowCanvas() {
     }
 
     const returnedNodes = result.nodes ?? [];
-    const returnedEdges = result.edges ?? [];
+    const returnedEdges = makeFloatingEdges(result.edges ?? []);
 
-    const layoutedNodes = layoutGraph(returnedNodes, returnedEdges, "LR");
-    const styledEdges = returnedEdges.map((edge) => ({
-      ...edge,
-      type: edge.type ?? "default",
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-      },
-      style: {
-        ...edge.style,
-        strokeWidth: 3,
-      },
-  }));
-
-    setNodes(layoutedNodes);
-    setEdges(styledEdges);
+    setNodes(returnedNodes);
+    setEdges(returnedEdges);
 
     if (result.automataType) {
       setAutomataType(result.automataType);
     }
 
     setSelectedItem(null);
-    updateNextNodeNumberFromGraph(layoutedNodes);
+    updateNextNodeNumberFromGraph(returnedNodes);
   }
 
   async function convertNfaToDfa() {
     const result = await handleConvertToDFA(getCurrentGraph());
-
     applyReturnedGraph(result);
   }
 
@@ -271,7 +279,7 @@ function FlowCanvas() {
         ...connection,
         id: `${connection.source}-${connection.target}-${Date.now()}`,
         label: edgeLabel || "",
-        type: "default",
+        type: "floating",
         markerEnd: {
           type: MarkerType.ArrowClosed,
         },
@@ -280,9 +288,7 @@ function FlowCanvas() {
         },
       };
 
-      setEdges((currentEdges) =>
-        addReactFlowEdge(newEdge, currentEdges)
-      );
+      setEdges((currentEdges) => addReactFlowEdge(newEdge, currentEdges));
     },
     [selectedTool, setEdges]
   );
@@ -312,6 +318,7 @@ function FlowCanvas() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onPaneClick={handlePaneClick}
@@ -323,9 +330,7 @@ function FlowCanvas() {
         fitView
       >
         <Panel position="top-left">
-          <div className="app-heading">
-            AutomataApp
-          </div>
+          <div className="app-heading">AutomataApp</div>
         </Panel>
 
         <Panel position="center-left">
@@ -391,35 +396,17 @@ function FlowCanvas() {
                 className={selectedTool === "delete" ? "tool-active" : ""}
               >
                 Delete Tool
-              </button>              
-              
-              <button
-                onClick={() => {
-                  const layoutedNodes = layoutGraph(nodes, edges, "LR");
-                  setNodes(layoutedNodes);
-                }}
-              >
-                Auto Arrange
               </button>
-
             </div>
 
             <div className="conversion-panel">
-              <div className="conversion-title">
-                {automataType} Conversion
-              </div>
+              <div className="conversion-title">{automataType} Conversion</div>
 
               {automataType === "NFA" && (
-                <button onClick={convertNfaToDfa}>
-                  Convert to DFA
-                </button>
+                <button onClick={convertNfaToDfa}>Convert to DFA</button>
               )}
 
-              <button onClick={convertToRegex}>
-                Convert to Regex
-              </button>
-
-
+              <button onClick={convertToRegex}>Convert to Regex</button>
 
               {convertedRegex && (
                 <div className="converted-regex-output">
@@ -429,9 +416,7 @@ function FlowCanvas() {
             </div>
 
             <div className="regex-panel">
-              <label className="regex-label">
-                Regex Conversion
-              </label>
+              <label className="regex-label">Regex Conversion</label>
 
               <div className="regex-input-row">
                 <input
@@ -456,6 +441,9 @@ function FlowCanvas() {
                 <>
                   <h3>Selected node</h3>
 
+                  <p>
+                    <strong>ID:</strong> {selectedNode.id}
+                  </p>
 
                   <p>
                     <strong>Label:</strong> {selectedNode.data?.label}
@@ -471,13 +459,25 @@ function FlowCanvas() {
                     {selectedNode.data?.accepting ? "Yes" : "No"}
                   </p>
 
+                  <p>
+                    <strong>X:</strong>{" "}
+                    {Math.round(selectedNode.position.x)}
+                  </p>
 
+                  <p>
+                    <strong>Y:</strong>{" "}
+                    {Math.round(selectedNode.position.y)}
+                  </p>
                 </>
               )}
 
               {selectedEdge && (
                 <>
                   <h3>Selected edge</h3>
+
+                  <p>
+                    <strong>ID:</strong> {selectedEdge.id}
+                  </p>
 
                   <p>
                     <strong>From:</strong> {selectedEdge.source}
@@ -497,11 +497,7 @@ function FlowCanvas() {
           </Panel>
         )}
 
-        <Background
-          variant={BackgroundVariant.Lines}
-          gap={24}
-          size={1}
-        />
+        <Background variant={BackgroundVariant.Lines} gap={24} size={1} />
 
         <Controls />
       </ReactFlow>
