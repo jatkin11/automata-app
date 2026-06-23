@@ -50,9 +50,9 @@ export async function handleConvertFromRegexToNFA(regexText){
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "text/plain",
       },
-      body: JSON.stringify(regexText),
+      body: regexText,
     }
   );
 
