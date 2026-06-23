@@ -14,6 +14,7 @@ import {
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
+import { layoutGraph } from "../utils/graphAutoLayout";
 
 import {
   handleConvertFromRegexToNFA,
@@ -85,7 +86,9 @@ function FlowCanvas() {
     const returnedNodes = result.nodes ?? [];
     const returnedEdges = result.edges ?? [];
 
-    setNodes(returnedNodes);
+    const layoutedNodes = layoutGraph(returnedNodes, returnedEdges, "LR");
+
+    setNodes(layoutedNodes);
     setEdges(returnedEdges);
 
     if (result.automataType) {
@@ -93,7 +96,7 @@ function FlowCanvas() {
     }
 
     setSelectedItem(null);
-    updateNextNodeNumberFromGraph(returnedNodes);
+    updateNextNodeNumberFromGraph(layoutedNodes);
   }
 
   async function convertNfaToDfa() {
