@@ -11,7 +11,10 @@ import {
   useNodesState,
   addEdge as addReactFlowEdge,
   MarkerType,
+  ConnectionMode,
 } from "@xyflow/react";
+
+import dagre from "@dagrejs/dagre";
 
 import "@xyflow/react/dist/style.css";
 import "./automata-flow.css";
@@ -33,6 +36,9 @@ const edgeTypes = {
   automataEdge: AutomataEdge,
   selfLoop: SelfLoopEdge,
 };
+
+const NODE_WIDTH = 64;
+const NODE_HEIGHT = 64;
 
 const initialNodes = [
   {
@@ -93,12 +99,52 @@ function normaliseNodes(rawNodes = []) {
   return ensureSingleStart(styledNodes);
 }
 
-function normaliseEdges(rawEdges = []) {
+function getBestHandlesForEdge(sourceNode, targetNode, isSelfLoop) {
+  if (isSelfLoop) {
+    return {
+      sourceHandle: "top-left",
+      targetHandle: "top-right",
+    };
+  }
+
+  if (!sourceNode || !targetNode) {
+    return {
+      sourceHandle: "right",
+      targetHandle: "left",
+    };
+  }
+
+  const sourceX = sourceNode.position?.x ?? 0;
+  const targetX = targetNode.position?.x ?? 0;
+
+  if (sourceX <= targetX) {
+    return {
+      sourceHandle: "right",
+      targetHandle: "left",
+    };
+  }
+
+  return {
+    sourceHandle: "left",
+    targetHandle: "right",
+  };
+}
+
+function normaliseEdges(rawEdges = [], nodes = []) {
   return rawEdges.map((edge) => {
     const source = String(edge.source);
     const target = String(edge.target);
     const label = edge.label ?? edge.data?.label ?? "";
     const isSelfLoop = source === target;
+
+    const sourceNode = nodes.find((node) => node.id === source);
+    const targetNode = nodes.find((node) => node.id === target);
+
+    const { sourceHandle, targetHandle } = getBestHandlesForEdge(
+      sourceNode,
+      targetNode,
+      isSelfLoop
+    );
 
     return {
       ...edge,
@@ -107,8 +153,8 @@ function normaliseEdges(rawEdges = []) {
       target,
       label,
       type: isSelfLoop ? "selfLoop" : "automataEdge",
-      sourceHandle: isSelfLoop ? "top-source" : "right-source",
-      targetHandle: isSelfLoop ? "top-target" : "left-target",
+      sourceHandle,
+      targetHandle,
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
@@ -210,8 +256,8 @@ function addCurveOffsets(edges) {
   });
 }
 
-function prepareEdges(rawEdges = []) {
-  const normalised = normaliseEdges(rawEdges);
+function prepareEdges(rawEdges = [], nodes = []) {
+  const normalised = normaliseEdges(rawEdges, nodes);
   const combined = combineParallelEdges(normalised);
   return addCurveOffsets(combined);
 }
@@ -226,6 +272,51 @@ function getNextNodeId(nodes) {
   }
 
   return `q${index}`;
+}
+
+function layoutWithDagre(nodes, edges, direction = "LR") {
+  const dagreGraph = new dagre.graphlib.Graph();
+
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+  dagreGraph.setGraph({
+    rankdir: direction,
+    nodesep: 80,
+    ranksep: 120,
+    marginx: 40,
+    marginy: 40,
+  });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, {
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+    });
+  });
+
+  edges.forEach((edge) => {
+    if (edge.source !== edge.target) {
+      dagreGraph.setEdge(edge.source, edge.target);
+    }
+  });
+
+  dagre.layout(dagreGraph);
+
+  return nodes.map((node) => {
+    const position = dagreGraph.node(node.id);
+
+    if (!position) {
+      return node;
+    }
+
+    return {
+      ...node,
+      position: {
+        x: position.x - NODE_WIDTH / 2,
+        y: position.y - NODE_HEIGHT / 2,
+      },
+    };
+  });
 }
 
 function AutomataCanvasInner() {
@@ -246,9 +337,10 @@ function AutomataCanvasInner() {
   const applyBackendGraph = useCallback(
     (graph) => {
       const styledNodes = normaliseNodes(graph.nodes ?? []);
-      const styledEdges = prepareEdges(graph.edges ?? []);
+      const laidOutNodes = layoutWithDagre(styledNodes, graph.edges ?? [], "LR");
+      const styledEdges = prepareEdges(graph.edges ?? [], laidOutNodes);
 
-      setNodes(styledNodes);
+      setNodes(laidOutNodes);
       setEdges(styledEdges);
     },
     [setNodes, setEdges]
@@ -341,6 +433,16 @@ function AutomataCanvasInner() {
     }
   }, [selectedNode, selectedEdge, setNodes, setEdges]);
 
+  const layoutCurrentGraph = useCallback(() => {
+    setNodes((currentNodes) => {
+      const laidOutNodes = layoutWithDagre(currentNodes, edges, "LR");
+
+      setEdges((currentEdges) => prepareEdges(currentEdges, laidOutNodes));
+
+      return laidOutNodes;
+    });
+  }, [edges, setNodes, setEdges]);
+
   const onNodeDoubleClick = useCallback(
     (event, node) => {
       makeStartNode(node.id);
@@ -356,22 +458,71 @@ function AutomataCanvasInner() {
     [toggleAcceptingNode]
   );
 
+  const onEdgeDoubleClick = useCallback(
+    (event, edge) => {
+      event.preventDefault();
+
+      const newLabel = window.prompt(
+        "Transition symbol, e.g. a, b, ε",
+        edge.label ?? ""
+      );
+
+      if (newLabel === null) {
+        return;
+      }
+
+      const trimmedLabel = newLabel.trim();
+
+      setEdges((currentEdges) =>
+        currentEdges.map((currentEdge) =>
+          currentEdge.id === edge.id
+            ? {
+                ...currentEdge,
+                label: trimmedLabel,
+                data: {
+                  ...currentEdge.data,
+                  label: trimmedLabel,
+                },
+              }
+            : currentEdge
+        )
+      );
+    },
+    [setEdges]
+  );
+
   const onConnect = useCallback(
     (connection) => {
+      const labelInput = window.prompt("Transition symbol, e.g. a, b, ε", "");
+
+      if (labelInput === null) {
+        return;
+      }
+
+      const label = labelInput.trim();
       const isSelfLoop = connection.source === connection.target;
+
+      const sourceNode = nodes.find((node) => node.id === connection.source);
+      const targetNode = nodes.find((node) => node.id === connection.target);
+
+      const { sourceHandle, targetHandle } = getBestHandlesForEdge(
+        sourceNode,
+        targetNode,
+        isSelfLoop
+      );
 
       const newEdge = {
         ...connection,
-        id: getEdgeId(connection.source, connection.target),
+        id: getEdgeId(connection.source, connection.target, label),
         type: isSelfLoop ? "selfLoop" : "automataEdge",
-        sourceHandle: isSelfLoop ? "top-source" : "right-source",
-        targetHandle: isSelfLoop ? "top-target" : "left-target",
+        sourceHandle,
+        targetHandle,
         markerEnd: {
           type: MarkerType.ArrowClosed,
         },
-        label: "",
+        label,
         data: {
-          label: "",
+          label,
           curveOffset: 0,
         },
       };
@@ -383,7 +534,7 @@ function AutomataCanvasInner() {
         return addCurveOffsets(combinedEdges);
       });
     },
-    [setEdges]
+    [nodes, setEdges]
   );
 
   const convertRegexToNFA = useCallback(async () => {
@@ -409,11 +560,13 @@ function AutomataCanvasInner() {
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        connectionMode={ConnectionMode.Loose}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeDoubleClick={onNodeDoubleClick}
         onNodeContextMenu={onNodeContextMenu}
+        onEdgeDoubleClick={onEdgeDoubleClick}
         fitView
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
@@ -430,6 +583,7 @@ function AutomataCanvasInner() {
 
             <button onClick={convertRegexToNFA}>Regex → NFA</button>
             <button onClick={convertToDFA}>NFA → DFA</button>
+            <button onClick={layoutCurrentGraph}>Auto layout</button>
           </div>
 
           <div className="panel-row">
@@ -460,8 +614,9 @@ function AutomataCanvasInner() {
           </div>
 
           <div className="panel-help">
-            Double-click a node to make it the start state. Right-click a node
-            to toggle accepting.
+            Draw an edge to add a transition symbol. Double-click an edge to
+            edit its symbol. Double-click a node to make it start. Right-click a
+            node to toggle accepting.
           </div>
         </Panel>
       </ReactFlow>

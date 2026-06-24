@@ -12,30 +12,32 @@ export default function AutomataNode({ data, selected }) {
     >
       {data.start && <div className="automata-start-arrow">→</div>}
 
+      {/* Main visible handles */}
       <Handle
-        id="left-target"
-        type="target"
+        id="left"
+        type="source"
         position={Position.Left}
         className="automata-handle"
       />
 
       <Handle
-        id="right-source"
+        id="right"
         type="source"
         position={Position.Right}
         className="automata-handle"
       />
 
+      {/* Hidden handles used for self-loops */}
       <Handle
-        id="top-source"
+        id="top-left"
         type="source"
         position={Position.Top}
         className="automata-loop-handle automata-loop-source"
       />
 
       <Handle
-        id="top-target"
-        type="target"
+        id="top-right"
+        type="source"
         position={Position.Top}
         className="automata-loop-handle automata-loop-target"
       />
