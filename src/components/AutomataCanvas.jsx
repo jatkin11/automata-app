@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   ReactFlow,
@@ -7,685 +7,472 @@ import {
   BackgroundVariant,
   Controls,
   Panel,
-  MarkerType,
   useEdgesState,
   useNodesState,
-  useReactFlow,
   addEdge as addReactFlowEdge,
+  MarkerType,
 } from "@xyflow/react";
 
-import dagre from "@dagrejs/dagre";
-
 import "@xyflow/react/dist/style.css";
+import "./automata-flow.css";
+
+import AutomataNode from "./AutomataNode";
+import AutomataEdge from "./AutomataEdge";
+import SelfLoopEdge from "./SelfLoopEdge";
 
 import {
   handleConvertFromRegexToNFA,
   handleConvertToDFA,
-  handleConvertFromAutomataToRegex,
-  handleMinimiseNfa,
 } from "../api/automataApi";
 
-const initialNodes = [];
+const nodeTypes = {
+  automata: AutomataNode,
+};
+
+const edgeTypes = {
+  automataEdge: AutomataEdge,
+  selfLoop: SelfLoopEdge,
+};
+
+const initialNodes = [
+  {
+    id: "q0",
+    type: "automata",
+    position: { x: 100, y: 220 },
+    data: {
+      label: "q0",
+      start: true,
+      accepting: false,
+    },
+  },
+];
+
 const initialEdges = [];
 
-const NODE_WIDTH = 150;
-const NODE_HEIGHT = 60;
+function getEdgeId(source, target, label = "") {
+  return `${source}-${target}-${label}-${Date.now()}`;
+}
 
-function FlowCanvas() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  const [selectedTool, setSelectedTool] = useState("select");
-  const [selectedItem, setSelectedItem] = useState(null);
-
-  const [automataType, setAutomataType] = useState("NFA");
-  const [convertedRegex, setConvertedRegex] = useState("");
-
-  const [regexInput, setRegexInput] = useState("");
-
-  const nextNodeNumber = useRef(0);
-
-  const { screenToFlowPosition, fitView } = useReactFlow();
-
-  const selectedNode =
-    selectedItem?.type === "node"
-      ? nodes.find((node) => node.id === selectedItem.id)
-      : null;
-
-  const selectedEdge =
-    selectedItem?.type === "edge"
-      ? edges.find((edge) => edge.id === selectedItem.id)
-      : null;
-
-  function splitEdgeLabel(label) {
-    return String(label || "")
-      .split(",")
-      .map((symbol) => symbol.trim())
-      .filter(Boolean);
+function ensureSingleStart(nodes) {
+  if (nodes.length === 0) {
+    return nodes;
   }
 
-  function mergeEdgeLabels(existingLabel, newLabel) {
-    const existingSymbols = splitEdgeLabel(existingLabel);
-    const newSymbols = splitEdgeLabel(newLabel);
+  let startIndex = nodes.findIndex((node) => Boolean(node.data?.start));
 
-    const mergedSymbols = Array.from(
-      new Set([...existingSymbols, ...newSymbols])
-    );
-
-    return mergedSymbols.join(",");
+  if (startIndex === -1) {
+    startIndex = 0;
   }
 
-  function makeArrowEdges(graphEdges) {
-    return graphEdges.map((edge) => ({
+  return nodes.map((node, index) => ({
+    ...node,
+    data: {
+      ...node.data,
+      start: index === startIndex,
+    },
+  }));
+}
+
+function normaliseNodes(rawNodes = []) {
+  const styledNodes = rawNodes.map((node, index) => ({
+    ...node,
+    id: String(node.id),
+    type: "automata",
+    position: node.position ?? {
+      x: 100 + index * 150,
+      y: 220,
+    },
+    data: {
+      ...node.data,
+      label: node.data?.label ?? node.label ?? String(node.id),
+      start: Boolean(node.data?.start),
+      accepting: Boolean(node.data?.accepting),
+    },
+  }));
+
+  return ensureSingleStart(styledNodes);
+}
+
+function normaliseEdges(rawEdges = []) {
+  return rawEdges.map((edge) => {
+    const source = String(edge.source);
+    const target = String(edge.target);
+    const label = edge.label ?? edge.data?.label ?? "";
+    const isSelfLoop = source === target;
+
+    return {
       ...edge,
-      type: edge.source === edge.target ? "smoothstep" : "default",
+      id: edge.id ?? getEdgeId(source, target, label),
+      source,
+      target,
+      label,
+      type: isSelfLoop ? "selfLoop" : "automataEdge",
+      sourceHandle: isSelfLoop ? "top-source" : "right-source",
+      targetHandle: isSelfLoop ? "top-target" : "left-target",
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
-      style: {
-        ...edge.style,
-        strokeWidth: 3,
+      data: {
+        ...edge.data,
+        label,
+        curveOffset: 0,
       },
-    }));
-  }
+    };
+  });
+}
 
-  function mergeParallelEdges(graphEdges) {
-    const edgeMap = new Map();
+function combineParallelEdges(edges) {
+  const grouped = new Map();
 
-    graphEdges.forEach((edge) => {
-      const key = `${edge.source}->${edge.target}`;
+  for (const edge of edges) {
+    const key = `${edge.source}__${edge.target}__${edge.sourceHandle}__${edge.targetHandle}`;
 
-      if (!edgeMap.has(key)) {
-        edgeMap.set(key, {
-          ...edge,
-          label: edge.label || "",
-        });
-        return;
-      }
-
-      const existingEdge = edgeMap.get(key);
-
-      edgeMap.set(key, {
-        ...existingEdge,
-        label: mergeEdgeLabels(existingEdge.label, edge.label),
-      });
-    });
-
-    return Array.from(edgeMap.values());
-  }
-
-  function expandEdgesForBackend(graphEdges) {
-    return graphEdges.flatMap((edge) => {
-      const symbols = splitEdgeLabel(edge.label);
-
-      if (symbols.length === 0) {
-        return [edge];
-      }
-
-      return symbols.map((symbol) => ({
+    if (!grouped.has(key)) {
+      grouped.set(key, {
         ...edge,
-        id: `${edge.source}-${symbol}-${edge.target}`,
-        label: symbol,
-      }));
-    });
+        label: edge.label ? String(edge.label) : "",
+        data: {
+          ...edge.data,
+          label: edge.label ? String(edge.label) : "",
+        },
+      });
+    } else {
+      const existing = grouped.get(key);
+
+      const existingLabels = existing.label
+        ? String(existing.label)
+            .split(",")
+            .map((label) => label.trim())
+        : [];
+
+      const newLabels = edge.label
+        ? String(edge.label)
+            .split(",")
+            .map((label) => label.trim())
+        : [];
+
+      const mergedLabels = Array.from(
+        new Set([...existingLabels, ...newLabels].filter(Boolean))
+      );
+
+      grouped.set(key, {
+        ...existing,
+        label: mergedLabels.join(", "),
+        data: {
+          ...existing.data,
+          label: mergedLabels.join(", "),
+        },
+      });
+    }
   }
 
-  function autoLayoutNodes(graphNodes, graphEdges, direction = "LR") {
-    const dagreGraph = new dagre.graphlib.Graph();
+  return Array.from(grouped.values());
+}
 
-    dagreGraph.setDefaultEdgeLabel(() => ({}));
+function addCurveOffsets(edges) {
+  return edges.map((edge) => {
+    if (edge.source === edge.target) {
+      return edge;
+    }
 
-    dagreGraph.setGraph({
-      rankdir: direction,
-      nodesep: 80,
-      ranksep: 120,
-    });
+    const hasReverseEdge = edges.some(
+      (otherEdge) =>
+        otherEdge.source === edge.target &&
+        otherEdge.target === edge.source
+    );
 
-    graphNodes.forEach((node) => {
-      dagreGraph.setNode(node.id, {
-        width: NODE_WIDTH,
-        height: NODE_HEIGHT,
-      });
-    });
-
-    graphEdges.forEach((edge) => {
-      if (edge.source !== edge.target) {
-        dagreGraph.setEdge(edge.source, edge.target);
-      }
-    });
-
-    dagre.layout(dagreGraph);
-
-    return graphNodes.map((node) => {
-      const layoutedNode = dagreGraph.node(node.id);
-
-      if (!layoutedNode) {
-        return node;
-      }
-
+    if (!hasReverseEdge) {
       return {
-        ...node,
-        position: {
-          x: layoutedNode.x - NODE_WIDTH / 2,
-          y: layoutedNode.y - NODE_HEIGHT / 2,
+        ...edge,
+        data: {
+          ...edge.data,
+          curveOffset: 0,
         },
       };
-    });
-  }
+    }
 
-  function getCurrentGraph() {
+    const directionKey = `${edge.source}__${edge.target}`;
+
+    const sortedDirectionKey =
+      edge.source < edge.target
+        ? `${edge.source}__${edge.target}`
+        : `${edge.target}__${edge.source}`;
+
+    const curveOffset = directionKey === sortedDirectionKey ? -55 : 55;
+
     return {
-      automataType,
-      nodes,
-      edges: expandEdgesForBackend(edges),
+      ...edge,
+      data: {
+        ...edge.data,
+        curveOffset,
+      },
     };
+  });
+}
+
+function prepareEdges(rawEdges = []) {
+  const normalised = normaliseEdges(rawEdges);
+  const combined = combineParallelEdges(normalised);
+  return addCurveOffsets(combined);
+}
+
+function getNextNodeId(nodes) {
+  const usedIds = new Set(nodes.map((node) => node.id));
+
+  let index = 0;
+
+  while (usedIds.has(`q${index}`)) {
+    index++;
   }
 
-  function updateNextNodeNumberFromGraph(graphNodes) {
-    let highestNodeNumber = -1;
+  return `q${index}`;
+}
 
-    graphNodes.forEach((node) => {
-      const textToCheck = `${node.id} ${node.data?.label ?? ""}`;
-      const matches = textToCheck.matchAll(/q(\d+)/g);
+function AutomataCanvasInner() {
+  const [regexInput, setRegexInput] = useState("");
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-      for (const match of matches) {
-        const number = Number(match[1]);
+  const selectedNode = useMemo(
+    () => nodes.find((node) => node.selected),
+    [nodes]
+  );
 
-        if (number > highestNodeNumber) {
-          highestNodeNumber = number;
-        }
-      }
-    });
+  const selectedEdge = useMemo(
+    () => edges.find((edge) => edge.selected),
+    [edges]
+  );
 
-    nextNodeNumber.current = highestNodeNumber + 1;
-  }
+  const applyBackendGraph = useCallback(
+    (graph) => {
+      const styledNodes = normaliseNodes(graph.nodes ?? []);
+      const styledEdges = prepareEdges(graph.edges ?? []);
 
-  function applyReturnedGraph(result) {
-    if (!result) {
-      return;
-    }
+      setNodes(styledNodes);
+      setEdges(styledEdges);
+    },
+    [setNodes, setEdges]
+  );
 
-    const returnedNodes = result.nodes ?? [];
-    const returnedEdges = result.edges ?? [];
+  const makeStartNode = useCallback(
+    (nodeId) => {
+      setNodes((currentNodes) =>
+        currentNodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            start: node.id === nodeId,
+          },
+        }))
+      );
+    },
+    [setNodes]
+  );
 
-    const mergedEdges = mergeParallelEdges(returnedEdges);
-    const styledEdges = makeArrowEdges(mergedEdges);
-    const layoutedNodes = autoLayoutNodes(returnedNodes, styledEdges, "LR");
+  const toggleAcceptingNode = useCallback(
+    (nodeId) => {
+      setNodes((currentNodes) =>
+        currentNodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  accepting: !node.data.accepting,
+                },
+              }
+            : node
+        )
+      );
+    },
+    [setNodes]
+  );
 
-    setNodes(layoutedNodes);
-    setEdges(styledEdges);
-
-    if (result.automataType) {
-      setAutomataType(result.automataType);
-    }
-
-    setSelectedItem(null);
-    updateNextNodeNumberFromGraph(layoutedNodes);
-
-    setTimeout(() => {
-      fitView({
-        padding: 0.2,
-        duration: 300,
-      });
-    }, 0);
-  }
-
-  async function convertNfaToDfa() {
-    const result = await handleConvertToDFA(getCurrentGraph());
-    applyReturnedGraph(result);
-  }
-
-    async function minimiseNfa() {
-    const result = await handleMinimiseNfa(getCurrentGraph());
-    applyReturnedGraph(result);
-  }
-
-  async function convertRegexToNFA(regexInput) {
-    const result = await handleConvertFromRegexToNFA(regexInput);
-
-    applyReturnedGraph(result);
-    setAutomataType("NFA");
-  }
-
-  async function convertToRegex() {
-    const result = await handleConvertFromAutomataToRegex(getCurrentGraph());
-
-    if (!result) {
-      return;
-    }
-
-    setConvertedRegex(result);
-  }
-
-  function autoLayoutCurrentGraph() {
-    const layoutedNodes = autoLayoutNodes(nodes, edges, "LR");
-
-    setNodes(layoutedNodes);
-    setSelectedItem(null);
-
-    setTimeout(() => {
-      fitView({
-        padding: 0.2,
-        duration: 300,
-      });
-    }, 0);
-  }
-
-  const handlePaneClick = useCallback(
-    (event) => {
-      if (selectedTool !== "add-node") {
-        setSelectedItem(null);
-        return;
-      }
-
-      const position = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
-
-      const nodeId = `q${nextNodeNumber.current}`;
+  const addNode = useCallback(() => {
+    setNodes((currentNodes) => {
+      const newNodeId = getNextNodeId(currentNodes);
 
       const newNode = {
-        id: nodeId,
+        id: newNodeId,
+        type: "automata",
         position: {
-          x: position.x - 30,
-          y: position.y - 30,
+          x: 120 + currentNodes.length * 110,
+          y: 260,
         },
         data: {
-          label: nodeId,
-          start: false,
+          label: newNodeId,
+          start: currentNodes.length === 0,
           accepting: false,
         },
       };
 
-      setNodes((currentNodes) => [...currentNodes, newNode]);
+      return ensureSingleStart([...currentNodes, newNode]);
+    });
+  }, [setNodes]);
 
-      setSelectedItem({
-        type: "node",
-        id: nodeId,
-      });
-
-      nextNodeNumber.current = nextNodeNumber.current + 1;
-    },
-    [selectedTool, screenToFlowPosition, setNodes]
-  );
-
-  const handleNodeClick = useCallback(
-    (event, clickedNode) => {
-      setSelectedItem({
-        type: "node",
-        id: clickedNode.id,
-      });
-
-      if (selectedTool === "delete") {
-        setNodes((currentNodes) =>
-          currentNodes.filter((node) => node.id !== clickedNode.id)
+  const deleteSelected = useCallback(() => {
+    if (selectedNode) {
+      setNodes((currentNodes) => {
+        const remainingNodes = currentNodes.filter(
+          (node) => node.id !== selectedNode.id
         );
 
-        setEdges((currentEdges) =>
+        return ensureSingleStart(remainingNodes);
+      });
+
+      setEdges((currentEdges) =>
+        addCurveOffsets(
           currentEdges.filter(
             (edge) =>
-              edge.source !== clickedNode.id && edge.target !== clickedNode.id
+              edge.source !== selectedNode.id && edge.target !== selectedNode.id
           )
-        );
-
-        setSelectedItem(null);
-        return;
-      }
-
-      if (selectedTool === "add-accepting-state") {
-        setNodes((currentNodes) =>
-          currentNodes.map((node) =>
-            node.id === clickedNode.id
-              ? {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    accepting: !Boolean(node.data?.accepting),
-                  },
-                }
-              : node
-          )
-        );
-
-        return;
-      }
-
-      if (selectedTool === "add-start-state") {
-        setNodes((currentNodes) => {
-          const clickedNodeInCurrentState = currentNodes.find(
-            (node) => node.id === clickedNode.id
-          );
-
-          const clickedNodeAlreadyStart = Boolean(
-            clickedNodeInCurrentState?.data?.start
-          );
-
-          return currentNodes.map((node) => ({
-            ...node,
-            data: {
-              ...node.data,
-              start: clickedNodeAlreadyStart
-                ? false
-                : node.id === clickedNode.id,
-            },
-          }));
-        });
-      }
-    },
-    [selectedTool, setNodes, setEdges]
-  );
-
-  const handleEdgeClick = useCallback(
-    (event, clickedEdge) => {
-      event.stopPropagation();
-
-      setSelectedItem({
-        type: "edge",
-        id: clickedEdge.id,
-      });
-
-      if (selectedTool === "delete") {
-        setEdges((currentEdges) =>
-          currentEdges.filter((edge) => edge.id !== clickedEdge.id)
-        );
-
-        setSelectedItem(null);
-      }
-    },
-    [selectedTool, setEdges]
-  );
-
-  const handleConnect = useCallback(
-    (connection) => {
-      if (selectedTool !== "add-edge") {
-        return;
-      }
-
-      const edgeLabel = prompt(
-        "Enter transition symbol(s), e.g. a or a,b or ε:"
+        )
       );
 
-      if (!edgeLabel) {
-        return;
-      }
+      return;
+    }
 
-      setEdges((currentEdges) => {
-        const existingEdge = currentEdges.find(
-          (edge) =>
-            edge.source === connection.source &&
-            edge.target === connection.target
-        );
+    if (selectedEdge) {
+      setEdges((currentEdges) =>
+        addCurveOffsets(
+          currentEdges.filter((edge) => edge.id !== selectedEdge.id)
+        )
+      );
+    }
+  }, [selectedNode, selectedEdge, setNodes, setEdges]);
 
-        if (existingEdge) {
-          return currentEdges.map((edge) =>
-            edge.id === existingEdge.id
-              ? {
-                  ...edge,
-                  label: mergeEdgeLabels(edge.label, edgeLabel),
-                }
-              : edge
-          );
-        }
-
-        const isSelfLoop = connection.source === connection.target;
-
-        const newEdge = {
-          ...connection,
-          id: `${connection.source}-${connection.target}-${Date.now()}`,
-          label: edgeLabel,
-          type: isSelfLoop ? "smoothstep" : "default",
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-          },
-          style: {
-            strokeWidth: 3,
-          },
-        };
-
-        return addReactFlowEdge(newEdge, currentEdges);
-      });
+  const onNodeDoubleClick = useCallback(
+    (event, node) => {
+      makeStartNode(node.id);
     },
-    [selectedTool, setEdges]
+    [makeStartNode]
   );
 
-  const handleSelectionChange = useCallback(({ nodes, edges }) => {
-    if (nodes.length > 0) {
-      setSelectedItem({
-        type: "node",
-        id: nodes[0].id,
-      });
-      return;
-    }
+  const onNodeContextMenu = useCallback(
+    (event, node) => {
+      event.preventDefault();
+      toggleAcceptingNode(node.id);
+    },
+    [toggleAcceptingNode]
+  );
 
-    if (edges.length > 0) {
-      setSelectedItem({
-        type: "edge",
-        id: edges[0].id,
-      });
-      return;
-    }
+  const onConnect = useCallback(
+    (connection) => {
+      const isSelfLoop = connection.source === connection.target;
 
-    setSelectedItem(null);
-  }, []);
+      const newEdge = {
+        ...connection,
+        id: getEdgeId(connection.source, connection.target),
+        type: isSelfLoop ? "selfLoop" : "automataEdge",
+        sourceHandle: isSelfLoop ? "top-source" : "right-source",
+        targetHandle: isSelfLoop ? "top-target" : "left-target",
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+        },
+        label: "",
+        data: {
+          label: "",
+          curveOffset: 0,
+        },
+      };
+
+      setEdges((currentEdges) => {
+        const updatedEdges = addReactFlowEdge(newEdge, currentEdges);
+        const combinedEdges = combineParallelEdges(updatedEdges);
+
+        return addCurveOffsets(combinedEdges);
+      });
+    },
+    [setEdges]
+  );
+
+  const convertRegexToNFA = useCallback(async () => {
+    const graph = await handleConvertFromRegexToNFA(regexInput);
+    applyBackendGraph(graph);
+  }, [regexInput, applyBackendGraph]);
+
+  const convertToDFA = useCallback(async () => {
+    const currentGraph = {
+      automataType: "NFA",
+      nodes,
+      edges,
+    };
+
+    const graph = await handleConvertToDFA(currentGraph);
+    applyBackendGraph(graph);
+  }, [nodes, edges, applyBackendGraph]);
 
   return (
-    <div className="canvas-container">
+    <div className="canvas-wrapper">
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onPaneClick={handlePaneClick}
-        onNodeClick={handleNodeClick}
-        onEdgeClick={handleEdgeClick}
-        onConnect={handleConnect}
-        onSelectionChange={handleSelectionChange}
-        nodesConnectable={selectedTool === "add-edge"}
+        onConnect={onConnect}
+        onNodeDoubleClick={onNodeDoubleClick}
+        onNodeContextMenu={onNodeContextMenu}
         fitView
       >
-        <Panel position="top-left">
-          <div className="app-heading">AutomataApp</div>
-        </Panel>
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+        <Controls />
 
-        <Panel position="center-left">
-          <div className="left-tool-stack">
-            <div className="tools-panel">
-              <div className="automata-toggle">
-                <button
-                  onClick={() => setAutomataType("NFA")}
-                  className={automataType === "NFA" ? "toggle-active" : ""}
-                >
-                  NFA
-                </button>
+        <Panel position="top-left" className="automata-panel">
+          <div className="panel-row">
+            <input
+              className="regex-input"
+              value={regexInput}
+              onChange={(event) => setRegexInput(event.target.value)}
+              placeholder="Enter regex e.g. (a|b)*abb"
+            />
 
-                <button
-                  onClick={() => setAutomataType("DFA")}
-                  className={automataType === "DFA" ? "toggle-active" : ""}
-                >
-                  DFA
-                </button>
-              </div>
+            <button onClick={convertRegexToNFA}>Regex → NFA</button>
+            <button onClick={convertToDFA}>NFA → DFA</button>
+          </div>
 
-              <button
-                onClick={() => setSelectedTool("select")}
-                className={selectedTool === "select" ? "tool-active" : ""}
-              >
-                Select / Move
-              </button>
+          <div className="panel-row">
+            <button onClick={addNode}>Add state</button>
 
-              <button
-                onClick={() => setSelectedTool("add-node")}
-                className={selectedTool === "add-node" ? "tool-active" : ""}
-              >
-                Add Node
-              </button>
+            <button
+              onClick={() => selectedNode && makeStartNode(selectedNode.id)}
+              disabled={!selectedNode}
+            >
+              Make start
+            </button>
 
-              <button
-                onClick={() => setSelectedTool("add-edge")}
-                className={selectedTool === "add-edge" ? "tool-active" : ""}
-              >
-                Add Edge
-              </button>
+            <button
+              onClick={() =>
+                selectedNode && toggleAcceptingNode(selectedNode.id)
+              }
+              disabled={!selectedNode}
+            >
+              Toggle accepting
+            </button>
 
-              <button
-                onClick={() => setSelectedTool("add-accepting-state")}
-                className={
-                  selectedTool === "add-accepting-state" ? "tool-active" : ""
-                }
-              >
-                Add Accepting State
-              </button>
+            <button
+              onClick={deleteSelected}
+              disabled={!selectedNode && !selectedEdge}
+            >
+              Delete selected
+            </button>
+          </div>
 
-              <button
-                onClick={() => setSelectedTool("add-start-state")}
-                className={
-                  selectedTool === "add-start-state" ? "tool-active" : ""
-                }
-              >
-                Add Starting State
-              </button>
-
-              <button
-                onClick={() => setSelectedTool("delete")}
-                className={selectedTool === "delete" ? "tool-active" : ""}
-              >
-                Delete Tool
-              </button>
-
-              <button onClick={autoLayoutCurrentGraph}>
-                Auto Layout
-              </button>
-            </div>
-
-            <div className="conversion-panel">
-              <div className="conversion-title">{automataType} Conversion</div>
-
-                {automataType === "NFA" && (
-                  <button onClick={convertNfaToDfa}>
-                    Convert to DFA
-                  </button>
-                )}
-
-                {automataType === "NFA" && (
-                  <button onClick={minimiseNfa}>
-                    Remove Epsilon Jumps
-                  </button>
-                )}
-
-              <button onClick={convertToRegex}>
-                Convert to Regex
-              </button>
-
-              {convertedRegex && (
-                <div className="converted-regex-output">
-                  <strong>Regex:</strong> {convertedRegex}
-                </div>
-              )}
-            </div>
-
-            <div className="regex-panel">
-              <label className="regex-label">
-                Regex Conversion
-              </label>
-
-              <div className="regex-input-row">
-                <input
-                  type="text"
-                  placeholder="e.g. (a|b)*abb"
-                  value={regexInput}
-                  onChange={(event) => setRegexInput(event.target.value)}
-                />
-
-                <button onClick={() => convertRegexToNFA(regexInput)}>
-                  Convert to NFA
-                </button>
-              </div>
-            </div>
+          <div className="panel-help">
+            Double-click a node to make it the start state. Right-click a node
+            to toggle accepting.
           </div>
         </Panel>
-
-        {(selectedNode || selectedEdge) && (
-          <Panel position="bottom-right">
-            <div className="inspector-panel">
-              {selectedNode && (
-                <>
-                  <h3>Selected node</h3>
-
-                  <p>
-                    <strong>ID:</strong> {selectedNode.id}
-                  </p>
-
-                  <p>
-                    <strong>Label:</strong> {selectedNode.data?.label}
-                  </p>
-
-                  <p>
-                    <strong>Start state:</strong>{" "}
-                    {selectedNode.data?.start ? "Yes" : "No"}
-                  </p>
-
-                  <p>
-                    <strong>Accepting state:</strong>{" "}
-                    {selectedNode.data?.accepting ? "Yes" : "No"}
-                  </p>
-
-                  <p>
-                    <strong>X:</strong>{" "}
-                    {Math.round(selectedNode.position.x)}
-                  </p>
-
-                  <p>
-                    <strong>Y:</strong>{" "}
-                    {Math.round(selectedNode.position.y)}
-                  </p>
-                </>
-              )}
-
-              {selectedEdge && (
-                <>
-                  <h3>Selected edge</h3>
-
-                  <p>
-                    <strong>ID:</strong> {selectedEdge.id}
-                  </p>
-
-                  <p>
-                    <strong>From:</strong> {selectedEdge.source}
-                  </p>
-
-                  <p>
-                    <strong>To:</strong> {selectedEdge.target}
-                  </p>
-
-                  <p>
-                    <strong>Label:</strong>{" "}
-                    {selectedEdge.label || "none"}
-                  </p>
-                </>
-              )}
-            </div>
-          </Panel>
-        )}
-
-        <Background
-          variant={BackgroundVariant.Lines}
-          gap={24}
-          size={1}
-        />
-
-        <Controls />
       </ReactFlow>
     </div>
   );
 }
 
-function AutomataCanvas() {
+export default function AutomataCanvas() {
   return (
     <ReactFlowProvider>
-      <FlowCanvas />
+      <AutomataCanvasInner />
     </ReactFlowProvider>
   );
 }
-
-export default AutomataCanvas;
