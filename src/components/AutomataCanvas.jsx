@@ -22,6 +22,7 @@ import {
   handleConvertFromRegexToNFA,
   handleConvertToDFA,
   handleConvertFromAutomataToRegex,
+  handleMinimiseNfa,
 } from "../api/automataApi";
 
 const initialNodes = [];
@@ -231,6 +232,11 @@ function FlowCanvas() {
 
   async function convertNfaToDfa() {
     const result = await handleConvertToDFA(getCurrentGraph());
+    applyReturnedGraph(result);
+  }
+
+    async function minimiseNfa() {
+    const result = await handleMinimiseNfa(getCurrentGraph());
     applyReturnedGraph(result);
   }
 
@@ -555,11 +561,17 @@ function FlowCanvas() {
             <div className="conversion-panel">
               <div className="conversion-title">{automataType} Conversion</div>
 
-              {automataType === "NFA" && (
-                <button onClick={convertNfaToDfa}>
-                  Convert to DFA
-                </button>
-              )}
+                {automataType === "NFA" && (
+                  <button onClick={convertNfaToDfa}>
+                    Convert to DFA
+                  </button>
+                )}
+
+                {automataType === "NFA" && (
+                  <button onClick={minimiseNfa}>
+                    Minimise NFA
+                  </button>
+                )}
 
               <button onClick={convertToRegex}>
                 Convert to Regex

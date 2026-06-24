@@ -65,3 +65,26 @@ export async function handleConvertFromRegexToNFA(regexText){
   return await response.json();
 
 }
+
+
+export async function handleMinimiseNfa(graph) {
+  const response = await fetch(
+    "https://automata-backend.onrender.com/api/automata/minimise-nfa",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(graph),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Backend error:", response.status, errorText);
+    return;
+  }
+
+  return await response.json();
+
+}
