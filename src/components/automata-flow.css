@@ -1,0 +1,167 @@
+.canvas-wrapper {
+  width: 100%;
+  height: 100vh;
+  background: #f8fafc;
+}
+
+/* ---------------------- */
+/* Panel */
+/* ---------------------- */
+
+.automata-panel {
+  background: white;
+  border: 1px solid #d0d7de;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+}
+
+.panel-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.panel-row:last-child {
+  margin-bottom: 0;
+}
+
+.regex-input {
+  width: 240px;
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.automata-panel button {
+  padding: 7px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.automata-panel button:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.automata-panel button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.panel-help {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* ---------------------- */
+/* Custom automata node */
+/* ---------------------- */
+
+.automata-node {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid #1f2937;
+  background: white;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  position: relative;
+  box-sizing: border-box;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Double circle for accepting states */
+.automata-node--accepting::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 2px solid #1f2937;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Different colour for start state */
+.automata-node--start {
+  background: #dbeafe;
+  border-color: #2563eb;
+}
+
+/* If accepting and start, make inner ring blue too */
+.automata-node--start.automata-node--accepting::after {
+  border-color: #2563eb;
+}
+
+/* Selected state */
+.automata-node--selected {
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.22);
+}
+
+.automata-node-label {
+  position: relative;
+  z-index: 2;
+}
+
+/* Start arrow beside node */
+.automata-start-arrow {
+  position: absolute;
+  left: -31px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 28px;
+  color: #2563eb;
+  font-weight: 800;
+}
+
+/* Visible left/right handles */
+.automata-handle {
+  width: 10px;
+  height: 10px;
+  background: #1f2937;
+  border: 2px solid white;
+}
+
+/* Hidden top handles for self-loops.
+   Do not use display:none because React Flow needs to measure them. */
+.automata-loop-handle {
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.automata-loop-source {
+  left: 36% !important;
+}
+
+.automata-loop-target {
+  left: 64% !important;
+}
+
+/* ---------------------- */
+/* Edges */
+/* ---------------------- */
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+.automata-edge-label,
+.self-loop-label {
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.15);
+}
