@@ -237,20 +237,16 @@ function addCurveOffsets(edges) {
       };
     }
 
-    const directionKey = `${edge.source}__${edge.target}`;
-
-    const sortedDirectionKey =
-      edge.source < edge.target
-        ? `${edge.source}__${edge.target}`
-        : `${edge.target}__${edge.source}`;
-
-    const curveOffset = directionKey === sortedDirectionKey ? -55 : 55;
-
     return {
       ...edge,
       data: {
         ...edge.data,
-        curveOffset,
+
+        // Important:
+        // Use the SAME offset for both directions.
+        // Because source/target are reversed, the normal vector flips automatically.
+        // So q0 -> q1 bends one way, and q1 -> q0 bends the other way.
+        curveOffset: 55,
       },
     };
   });
