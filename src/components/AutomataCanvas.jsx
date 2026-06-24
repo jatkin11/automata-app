@@ -569,7 +569,7 @@ function FlowCanvas() {
 
                 {automataType === "NFA" && (
                   <button onClick={minimiseNfa}>
-                    Minimise NFA
+                    Remove Epsilon Jumps
                   </button>
                 )}
 
