@@ -12,7 +12,11 @@ import {
   addEdge as addReactFlowEdge,
   MarkerType,
   ConnectionMode,
+  BaseEdge,
+  EdgeLabelRenderer,
 } from "@xyflow/react";
+
+import { useEdgeRouting, useRoutedEdgePath } from "reactflow-edge-routing";
 
 import dagre from "@dagrejs/dagre";
 
@@ -20,7 +24,6 @@ import "@xyflow/react/dist/style.css";
 import "./automata-flow.css";
 
 import AutomataNode from "./AutomataNode";
-import AutomataEdge from "./AutomataEdge";
 import SelfLoopEdge from "./SelfLoopEdge";
 
 import {
@@ -28,17 +31,70 @@ import {
   handleConvertToDFA,
 } from "../api/automataApi";
 
+const NODE_WIDTH = 64;
+const NODE_HEIGHT = 64;
+
+function RoutedAutomataEdge(props) {
+  const {
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    markerEnd,
+    style = {},
+    data,
+    selected,
+  } = props;
+
+  const [path, labelX, labelY] = useRoutedEdgePath({
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+  });
+
+  const label = data?.label ?? "";
+
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={path}
+        markerEnd={markerEnd}
+        style={{
+          ...style,
+          strokeWidth: selected ? 3 : 2,
+        }}
+      />
+
+      {label && (
+        <EdgeLabelRenderer>
+          <div
+            className="automata-edge-label nodrag nopan"
+            style={{
+              position: "absolute",
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              pointerEvents: "all",
+            }}
+          >
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
 const nodeTypes = {
   automata: AutomataNode,
 };
 
 const edgeTypes = {
-  automataEdge: AutomataEdge,
+  routedAutomataEdge: RoutedAutomataEdge,
   selfLoop: SelfLoopEdge,
 };
-
-const NODE_WIDTH = 64;
-const NODE_HEIGHT = 64;
 
 const initialNodes = [
   {
@@ -152,7 +208,7 @@ function normaliseEdges(rawEdges = [], nodes = []) {
       source,
       target,
       label,
-      type: isSelfLoop ? "selfLoop" : "automataEdge",
+      type: isSelfLoop ? "selfLoop" : "routedAutomataEdge",
       sourceHandle,
       targetHandle,
       markerEnd: {
@@ -161,7 +217,6 @@ function normaliseEdges(rawEdges = [], nodes = []) {
       data: {
         ...edge.data,
         label,
-        curveOffset: 0,
       },
     };
   });
@@ -215,47 +270,9 @@ function combineParallelEdges(edges) {
   return Array.from(grouped.values());
 }
 
-function addCurveOffsets(edges) {
-  return edges.map((edge) => {
-    if (edge.source === edge.target) {
-      return edge;
-    }
-
-    const hasReverseEdge = edges.some(
-      (otherEdge) =>
-        otherEdge.source === edge.target &&
-        otherEdge.target === edge.source
-    );
-
-    if (!hasReverseEdge) {
-      return {
-        ...edge,
-        data: {
-          ...edge.data,
-          curveOffset: 0,
-        },
-      };
-    }
-
-    return {
-      ...edge,
-      data: {
-        ...edge.data,
-
-        // Important:
-        // Use the SAME offset for both directions.
-        // Because source/target are reversed, the normal vector flips automatically.
-        // So q0 -> q1 bends one way, and q1 -> q0 bends the other way.
-        curveOffset: 55,
-      },
-    };
-  });
-}
-
 function prepareEdges(rawEdges = [], nodes = []) {
   const normalised = normaliseEdges(rawEdges, nodes);
-  const combined = combineParallelEdges(normalised);
-  return addCurveOffsets(combined);
+  return combineParallelEdges(normalised);
 }
 
 function getNextNodeId(nodes) {
@@ -330,6 +347,56 @@ function AutomataCanvasInner() {
     [edges]
   );
 
+  const routableEdges = useMemo(
+    () => edges.filter((edge) => edge.source !== edge.target),
+    [edges]
+  );
+
+  const routingOptions = useMemo(
+    () => ({
+      connectorType: "orthogonal",
+      edgeRounding: 12,
+      edgeToEdgeSpacing: 12,
+      edgeToNodeSpacing: 12,
+      handleSpacing: 8,
+      autoBestSideConnection: true,
+      shouldSplitEdgesNearHandle: true,
+      stubSize: 20,
+      segmentPenalty: 10,
+      nudgeOrthogonalSegmentsConnectedToShapes: true,
+      nudgeSharedPathsWithCommonEndPoint: true,
+    }),
+    []
+  );
+
+  const { updateRoutingOnNodesChange, resetRouting } = useEdgeRouting(
+    nodes,
+    routableEdges,
+    routingOptions
+  );
+
+  const resetRoutingSoon = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      resetRouting();
+    });
+  }, [resetRouting]);
+
+  const handleNodesChange = useCallback(
+    (changes) => {
+      onNodesChange(changes);
+      updateRoutingOnNodesChange(changes);
+    },
+    [onNodesChange, updateRoutingOnNodesChange]
+  );
+
+  const handleEdgesChange = useCallback(
+    (changes) => {
+      onEdgesChange(changes);
+      resetRoutingSoon();
+    },
+    [onEdgesChange, resetRoutingSoon]
+  );
+
   const applyBackendGraph = useCallback(
     (graph) => {
       const styledNodes = normaliseNodes(graph.nodes ?? []);
@@ -338,8 +405,9 @@ function AutomataCanvasInner() {
 
       setNodes(laidOutNodes);
       setEdges(styledEdges);
+      resetRoutingSoon();
     },
-    [setNodes, setEdges]
+    [setNodes, setEdges, resetRoutingSoon]
   );
 
   const makeStartNode = useCallback(
@@ -396,7 +464,9 @@ function AutomataCanvasInner() {
 
       return ensureSingleStart([...currentNodes, newNode]);
     });
-  }, [setNodes]);
+
+    resetRoutingSoon();
+  }, [setNodes, resetRoutingSoon]);
 
   const deleteSelected = useCallback(() => {
     if (selectedNode) {
@@ -409,35 +479,35 @@ function AutomataCanvasInner() {
       });
 
       setEdges((currentEdges) =>
-        addCurveOffsets(
-          currentEdges.filter(
-            (edge) =>
-              edge.source !== selectedNode.id && edge.target !== selectedNode.id
-          )
+        currentEdges.filter(
+          (edge) =>
+            edge.source !== selectedNode.id && edge.target !== selectedNode.id
         )
       );
 
+      resetRoutingSoon();
       return;
     }
 
     if (selectedEdge) {
       setEdges((currentEdges) =>
-        addCurveOffsets(
-          currentEdges.filter((edge) => edge.id !== selectedEdge.id)
-        )
+        currentEdges.filter((edge) => edge.id !== selectedEdge.id)
       );
+
+      resetRoutingSoon();
     }
-  }, [selectedNode, selectedEdge, setNodes, setEdges]);
+  }, [selectedNode, selectedEdge, setNodes, setEdges, resetRoutingSoon]);
 
   const layoutCurrentGraph = useCallback(() => {
     setNodes((currentNodes) => {
       const laidOutNodes = layoutWithDagre(currentNodes, edges, "LR");
 
       setEdges((currentEdges) => prepareEdges(currentEdges, laidOutNodes));
+      resetRoutingSoon();
 
       return laidOutNodes;
     });
-  }, [edges, setNodes, setEdges]);
+  }, [edges, setNodes, setEdges, resetRoutingSoon]);
 
   const onNodeDoubleClick = useCallback(
     (event, node) => {
@@ -460,7 +530,7 @@ function AutomataCanvasInner() {
 
       const newLabel = window.prompt(
         "Transition symbol, e.g. a, b, ε",
-        edge.label ?? ""
+        edge.label ?? edge.data?.label ?? ""
       );
 
       if (newLabel === null) {
@@ -510,7 +580,7 @@ function AutomataCanvasInner() {
       const newEdge = {
         ...connection,
         id: getEdgeId(connection.source, connection.target, label),
-        type: isSelfLoop ? "selfLoop" : "automataEdge",
+        type: isSelfLoop ? "selfLoop" : "routedAutomataEdge",
         sourceHandle,
         targetHandle,
         markerEnd: {
@@ -519,18 +589,17 @@ function AutomataCanvasInner() {
         label,
         data: {
           label,
-          curveOffset: 0,
         },
       };
 
       setEdges((currentEdges) => {
         const updatedEdges = addReactFlowEdge(newEdge, currentEdges);
-        const combinedEdges = combineParallelEdges(updatedEdges);
-
-        return addCurveOffsets(combinedEdges);
+        return combineParallelEdges(updatedEdges);
       });
+
+      resetRoutingSoon();
     },
-    [nodes, setEdges]
+    [nodes, setEdges, resetRoutingSoon]
   );
 
   const convertRegexToNFA = useCallback(async () => {
@@ -557,9 +626,10 @@ function AutomataCanvasInner() {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
+        onNodeDragStop={resetRouting}
         onNodeDoubleClick={onNodeDoubleClick}
         onNodeContextMenu={onNodeContextMenu}
         onEdgeDoubleClick={onEdgeDoubleClick}

@@ -16,6 +16,15 @@
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
 }
 
+.automata-edge-label {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: white;
+  border: 1px solid #999;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .panel-row {
   display: flex;
   gap: 8px;

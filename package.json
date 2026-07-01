@@ -12,8 +12,10 @@
   "dependencies": {
     "@dagrejs/dagre": "^3.0.0",
     "@xyflow/react": "^12.11.0",
+    "obstacle-router": "^0.1.2",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "reactflow-edge-routing": "^0.1.13"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
